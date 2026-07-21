@@ -18,7 +18,7 @@ from app.schemas.schemas import (
     ProfileResponse, SourceCreate, SourceUpdate, SourceResponse,
     CandidateCreate, CandidateUpdate, CandidateResponse,
     JobCreate, JobResponse, NotificationResponse,
-    SettingsResponse, SettingsUpdate,
+    SettingsUpdate,
 )
 
 router = APIRouter(prefix="/api/v1")

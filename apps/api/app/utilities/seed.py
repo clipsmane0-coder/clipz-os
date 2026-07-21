@@ -4,17 +4,15 @@ Usage:
     PYTHONPATH=. python -m app.utilities.seed
 """
 
-import uuid
 import asyncio
 from datetime import datetime, timezone, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import async_session
 from app.models import (
     Profile, Source, Candidate, CandidateScore, Job, Notification,
-    SystemSetting, AuditLog,
+    SystemSetting, ProfileSetting, ProfilePlatform, ProfileSource, AuditLog,
 )
-from app.models.models import gen_uuid, utcnow
+from app.models.models import gen_uuid
 
 
 def iso(offset_days=0, offset_hours=0):
@@ -24,6 +22,12 @@ def iso(offset_days=0, offset_hours=0):
 
 async def seed():
     async with async_session() as session:
+        # Clear existing data in dependency order
+        for table in [AuditLog, ProfileSetting, SystemSetting, Notification,
+                       Job, CandidateScore, Candidate, Source, ProfileSource,
+                       ProfilePlatform, Profile]:
+            await session.execute(table.__table__.delete())
+        await session.commit()
         # === PROFILES ===
         profiles_data = [
             {"name": "Kai Cenat Clips", "slug": "kai-cenat-clips", "profile_type": "creator",
@@ -213,7 +217,7 @@ async def seed():
             session.add(ss)
 
         await session.commit()
-        print(f"Seed complete:")
+        print("Seed complete:")
         print(f"  Profiles: {len(profiles_data)}")
         print(f"  Sources: {len(sources_data)}")
         print(f"  Candidates: {len(candidates_list)}")

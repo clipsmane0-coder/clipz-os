@@ -7,7 +7,7 @@ import os
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 
 from app.main import app
-from app.db.session import Base, async_session, engine
+from app.db.session import Base, engine
 
 
 @pytest.fixture(autouse=True)
@@ -353,3 +353,95 @@ async def test_job_create_with_payload(client):
     })
     assert resp.status_code == 201
     assert resp.json()["data"]["job_type"] == "transcribe"
+
+# ============================================================
+# REQUEST ID PROPAGATION
+# ============================================================
+@pytest.mark.asyncio
+async def test_request_id_generated(client):
+    resp = await client.get("/api/v1/health")
+    rid = resp.json()["meta"]["request_id"]
+    assert rid is not None
+    assert len(rid) > 0
+
+
+@pytest.mark.asyncio
+async def test_request_id_in_response_header(client):
+    resp = await client.get("/api/v1/health")
+    assert "x-request-id" in resp.headers
+    assert len(resp.headers["x-request-id"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_request_id_in_error_response(client):
+    resp = await client.get(f"/api/v1/profiles/{uuid.uuid4()}")
+    assert resp.json()["meta"]["request_id"] is not None
+
+
+# ============================================================
+# PROFILE SETTINGS
+# ============================================================
+@pytest.mark.asyncio
+async def test_profile_settings_retrieve_and_update(client, unique):
+    p = await client.post("/api/v1/profiles", json={"name": f"PS-{unique}", "slug": f"ps-{unique}"})
+    pid = p.json()["data"]["id"]
+    resp = await client.get(f"/api/v1/profiles/{pid}/settings")
+    assert resp.status_code == 200
+    assert resp.json()["data"] == []
+    resp = await client.patch(f"/api/v1/profiles/{pid}/settings", json={"key": "theme", "value": "dark"})
+    assert resp.status_code == 200
+    assert resp.json()["data"]["value"] == "dark"
+    resp = await client.get(f"/api/v1/profiles/{pid}/settings")
+    assert len(resp.json()["data"]) == 1
+
+
+# ============================================================
+# SOURCE ARCHIVE
+# ============================================================
+@pytest.mark.asyncio
+async def test_source_archive_transition(client, unique):
+    p = await client.post("/api/v1/profiles", json={"name": f"SA-{unique}", "slug": f"sa-{unique}"})
+    pid = p.json()["data"]["id"]
+    s = await client.post("/api/v1/sources", json={"title": f"S-{unique}", "profile_id": pid})
+    sid = s.json()["data"]["id"]
+    assert s.json()["data"]["status"] == "new"
+    resp = await client.post(f"/api/v1/sources/{sid}/archive")
+    assert resp.json()["data"]["status"] == "archived"
+
+
+# ============================================================
+# SETTINGS PERSISTENCE
+# ============================================================
+@pytest.mark.asyncio
+async def test_settings_update_persistence(client):
+    await client.patch("/api/v1/settings", json={"key": "max_parallel_jobs", "value": "12"})
+    resp = await client.get("/api/v1/settings")
+    assert any(s["key"] == "max_parallel_jobs" and s["value"] == "12" for s in resp.json()["data"])
+
+
+# ============================================================
+# MALFORMED PAGINATION
+# ============================================================
+@pytest.mark.asyncio
+async def test_malformed_pagination(client):
+    resp = await client.get("/api/v1/profiles?page=-1")
+    assert resp.status_code == 422
+    resp = await client.get("/api/v1/profiles?page_size=0")
+    assert resp.status_code == 422
+    resp = await client.get("/api/v1/profiles?page_size=200")
+    assert resp.status_code == 422
+
+
+# ============================================================
+# DELETE CASCADE
+# ============================================================
+@pytest.mark.asyncio
+async def test_delete_profile_cascades(client, unique):
+    p = await client.post("/api/v1/profiles", json={"name": f"DC-{unique}", "slug": f"dc-{unique}"})
+    pid = p.json()["data"]["id"]
+    s = await client.post("/api/v1/sources", json={"title": f"S-{unique}", "profile_id": pid})
+    sid = s.json()["data"]["id"]
+    resp = await client.delete(f"/api/v1/profiles/{pid}")
+    assert resp.status_code == 200
+    resp = await client.get(f"/api/v1/sources/{sid}")
+    assert resp.status_code == 404

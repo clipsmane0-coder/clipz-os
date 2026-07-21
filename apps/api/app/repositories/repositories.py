@@ -1,11 +1,10 @@
 from typing import Optional, List, Tuple
-from sqlalchemy import select, func, update, delete
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
-    Profile, ProfilePlatform, ProfileSource,
-    Source, Candidate, CandidateScore, Job,
-    Notification, SystemSetting, ProfileSetting, AuditLog,
+    Profile, Source, Candidate, Job,
+    Notification, SystemSetting, ProfileSetting,
 )
 from app.models.models import utcnow, gen_uuid
 
@@ -61,9 +60,12 @@ class ProfileRepository(BaseRepository):
         return profile
 
     async def delete(self, profile_id: str) -> bool:
-        result = await self.session.execute(delete(Profile).where(Profile.id == profile_id))
+        profile = await self.get_by_id(profile_id)
+        if not profile:
+            return False
+        await self.session.delete(profile)
         await self.session.commit()
-        return result.rowcount > 0
+        return True
 
 
 # ============================================================
@@ -209,7 +211,7 @@ class NotificationRepository(BaseRepository):
                    profile_id: Optional[str] = None) -> Tuple[List[Notification], int]:
         query = select(Notification)
         if unread_only:
-            query = query.where(Notification.is_read == False)
+            query = query.where(not Notification.is_read)
         if profile_id:
             query = query.where(Notification.profile_id == profile_id)
         total_q = select(func.count()).select_from(query.subquery())

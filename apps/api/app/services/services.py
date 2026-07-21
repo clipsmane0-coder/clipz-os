@@ -1,5 +1,4 @@
-import uuid
-from typing import Optional, List, Tuple, Any
+from typing import Optional, List, Tuple
 
 from app.repositories.repositories import (
     ProfileRepository, SourceRepository, CandidateRepository,
