@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, Request, HTTPException, status as http_status
+from fastapi import APIRouter, Depends, Query, Request, HTTPException, status as http_status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -15,11 +15,12 @@ from app.repositories.repositories import (
 from app.schemas.schemas import (
     ApiMeta, ApiResponse, PaginatedMeta, PaginatedResponse,
     ApiError, ApiErrorResponse, ProfileCreate, ProfileUpdate,
-    ProfileResponse, SourceCreate, SourceUpdate, SourceResponse,
+    ProfileResponse, SourceCreate, SourceUpdate, SourceRegisterUrl, SourceResponse,
     CandidateCreate, CandidateUpdate, CandidateResponse,
     JobCreate, JobResponse, NotificationResponse,
     SettingsUpdate,
 )
+from app.workflows.ingestion import SourceIngestionWorkflow, IngestionError
 
 router = APIRouter(prefix="/api/v1")
 
@@ -222,6 +223,274 @@ async def archive_source(request: Request, source_id: str, db: AsyncSession = De
     if not data:
         error("SOURCE_NOT_FOUND", "The requested source does not exist.", status_code=404)
     return ApiResponse(data=SourceResponse.model_validate(data), meta=get_meta(request))
+
+
+# ============================================================
+# SOURCE UPLOAD
+# ============================================================
+@router.post("/sources/upload", status_code=201)
+async def upload_source(
+    request: Request,
+    profile_id: str = Query(...),
+    file: UploadFile = File(...),
+    title: Optional[str] = Query(None),
+    rights_status: str = Query("unknown"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a media file as a new source. Streams and validates."""
+    validate_uuid(profile_id, "profile_id")
+
+    # Stream file in chunks, enforcing size limit
+    MAX_SIZE = 200 * 1024 * 1024  # 200 MB
+    chunks = []
+    total = 0
+    while True:
+        chunk = await file.read(64 * 1024)  # 64 KB chunks
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_SIZE:
+            raise HTTPException(status_code=400, detail=ApiErrorResponse(
+                error=ApiError(code="FILE_TOO_LARGE",
+                               message=f"File exceeds maximum size of {MAX_SIZE // (1024*1024)} MB."),
+                meta=get_meta(request)).model_dump())
+        chunks.append(chunk)
+
+    file_data = b"".join(chunks)
+    filename = file.filename or "upload.bin"
+
+    if len(file_data) == 0:
+        raise HTTPException(status_code=400, detail=ApiErrorResponse(
+            error=ApiError(code="EMPTY_FILE", message="Uploaded file is empty."),
+            meta=get_meta(request)).model_dump())
+
+    # Delegate to ingestion workflow
+    workflow = SourceIngestionWorkflow(db)
+    try:
+        result = await workflow.run_upload(
+            profile_id=profile_id,
+            file_data=file_data,
+            filename=filename,
+            title=title,
+            rights_status=rights_status,
+        )
+    except IngestionError as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail=ApiErrorResponse(
+                error=ApiError(code=e.code, message=e.message, details=e.details, retryable=e.retryable),
+                meta=get_meta(request),
+            ).model_dump(),
+        )
+
+    return ApiResponse(data=result, meta=get_meta(request))
+
+
+@router.post("/sources/register-url", status_code=201)
+async def register_source_url(
+    request: Request,
+    body: SourceRegisterUrl,
+    db: AsyncSession = Depends(get_db),
+):
+    """Register an external URL as a source (not downloaded yet)."""
+    validate_uuid(body.profile_id, "profile_id")
+    url = body.source_url.strip() if body.source_url else ""
+    if not url:
+        raise HTTPException(status_code=400, detail=ApiErrorResponse(
+            error=ApiError(code="INVALID_SOURCE_URL", message="URL is required."),
+            meta=get_meta(request)).model_dump())
+
+    # Validate URL scheme
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail=ApiErrorResponse(
+            error=ApiError(code="INVALID_SOURCE_URL", message="Only http and https URLs are supported."),
+            meta=get_meta(request)).model_dump())
+
+    # Block local/private URLs
+    blocked = ["localhost", "127.0.0.1", "0.0.0.0", "10.", "172.16.", "192.168.",
+               "169.254.", "::1", "[::1]", "file:", "data:", "ftp:"]
+    url_lower = url.lower()
+    for b in blocked:
+        if b in url_lower:
+            raise HTTPException(status_code=400, detail=ApiErrorResponse(
+                error=ApiError(code="INVALID_SOURCE_URL",
+                               message="URL references a local or private resource."),
+                meta=get_meta(request)).model_dump())
+
+    # Validate profile exists
+    profile_repo = ProfileRepository(db)
+    profile = await profile_repo.get_by_id(body.profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=ApiErrorResponse(
+            error=ApiError(code="PROFILE_NOT_FOUND", message="The requested profile does not exist."),
+            meta=get_meta(request)).model_dump())
+
+    # Normalize URL for duplicate detection
+    import urllib.parse
+    parsed = urllib.parse.urlparse(url)
+    normalized = f"{parsed.scheme}://{parsed.hostname.lower()}{parsed.path.rstrip('/') or '/'}"
+    if parsed.query:
+        normalized += "?" + parsed.query
+
+    # Check for duplicate
+    source_repo = SourceRepository(db)
+    sources, _ = await source_repo.list(profile_id=body.profile_id, page_size=100)
+    for s in sources:
+        if s.source_url and s.source_url.rstrip("/").lower() == normalized.rstrip("/").lower():
+            raise HTTPException(status_code=409, detail=ApiErrorResponse(
+                error=ApiError(code="DUPLICATE_SOURCE",
+                               message="A source with this URL already exists for this profile.",
+                               details={"existing_source_id": s.id}),
+                meta=get_meta(request)).model_dump())
+
+    source_title = body.title or parsed.path.split("/")[-1][:100] or "Imported URL"
+    source_data = SourceCreate(
+        title=source_title,
+        profile_id=body.profile_id,
+        source_type="url",
+        source_kind="video",
+        source_url=url,
+        original_url=url,
+        rights_status=body.rights_status,
+    )
+    service = SourceService(SourceRepository(db))
+    data = await service.create(source_data.model_dump(exclude_unset=True))
+    return ApiResponse(data=SourceResponse.model_validate(data), meta=get_meta(request))
+
+
+# ============================================================
+# SOURCE INSPECTION
+# ============================================================
+@router.get("/sources/{source_id}/inspection")
+async def get_source_inspection(request: Request, source_id: str, db: AsyncSession = Depends(get_db)):
+    validate_uuid(source_id, "source_id")
+    service = SourceService(SourceRepository(db))
+    data = await service.get(source_id)
+    if not data:
+        raise HTTPException(status_code=404, detail=ApiErrorResponse(
+            error=ApiError(code="SOURCE_NOT_FOUND", message="The requested source does not exist."),
+            meta=get_meta(request)).model_dump())
+    return ApiResponse(data={
+        "duration_ms": data.duration_ms,
+        "width": data.width,
+        "height": data.height,
+        "frame_rate": data.frame_rate,
+        "video_codec": data.video_codec,
+        "audio_codec": data.audio_codec,
+        "audio_channels": data.audio_channels,
+        "audio_sample_rate": data.audio_sample_rate,
+        "bitrate": data.bitrate,
+        "container_format": data.container_format,
+        "inspection_status": data.inspection_status,
+        "inspection_error": data.inspection_error,
+        "inspected_at": data.inspected_at.isoformat() if data.inspected_at else None,
+    }, meta=get_meta(request))
+
+
+@router.get("/sources/{source_id}/thumbnail")
+async def get_source_thumbnail(request: Request, source_id: str, db: AsyncSession = Depends(get_db)):
+    validate_uuid(source_id, "source_id")
+    service = SourceService(SourceRepository(db))
+    data = await service.get(source_id)
+    if not data:
+        raise HTTPException(status_code=404, detail=ApiErrorResponse(
+            error=ApiError(code="SOURCE_NOT_FOUND", message="The requested source does not exist."),
+            meta=get_meta(request)).model_dump())
+    if not data.thumbnail_storage_key:
+        raise HTTPException(status_code=404, detail=ApiErrorResponse(
+            error=ApiError(code="NO_THUMBNAIL", message="No thumbnail available for this source."),
+            meta=get_meta(request)).model_dump())
+    from app.adapters.storage import LocalStorageAdapter
+    storage = LocalStorageAdapter()
+    thumb_data = await storage.open(data.thumbnail_storage_key)
+    if thumb_data is None:
+        raise HTTPException(status_code=404, detail=ApiErrorResponse(
+            error=ApiError(code="NO_THUMBNAIL", message="Thumbnail file not found on storage."),
+            meta=get_meta(request)).model_dump())
+    from fastapi.responses import Response
+    return Response(content=thumb_data, media_type="image/jpeg")
+
+
+@router.post("/sources/{source_id}/reinspect")
+async def reinspect_source(request: Request, source_id: str, db: AsyncSession = Depends(get_db)):
+    validate_uuid(source_id, "source_id")
+    service = SourceService(SourceRepository(db))
+    data = await service.get(source_id)
+    if not data:
+        raise HTTPException(status_code=404, detail=ApiErrorResponse(
+            error=ApiError(code="SOURCE_NOT_FOUND", message="The requested source does not exist."),
+            meta=get_meta(request)).model_dump())
+    if not data.storage_key:
+        raise HTTPException(status_code=400, detail=ApiErrorResponse(
+            error=ApiError(code="NO_FILE", message="This source has no stored file to inspect."),
+            meta=get_meta(request)).model_dump())
+
+    from app.adapters.storage import LocalStorageAdapter
+    from app.adapters.media import FFprobeMediaInspector
+    from app.models.models import utcnow
+    storage = LocalStorageAdapter()
+    file_path = storage.resolve_path(data.storage_key)
+    inspector = FFprobeMediaInspector()
+    try:
+        inspection = await inspector.inspect(file_path)
+        updated = await service.update(source_id, {
+            "duration_ms": inspection["duration_ms"],
+            "width": inspection["width"],
+            "height": inspection["height"],
+            "frame_rate": inspection["frame_rate"],
+            "video_codec": inspection["video_codec"],
+            "audio_codec": inspection["audio_codec"],
+            "audio_channels": inspection["audio_channels"],
+            "audio_sample_rate": inspection["audio_sample_rate"],
+            "bitrate": inspection.get("bitrate", 0),
+            "container_format": inspection.get("container_format", ""),
+            "inspection_status": "completed",
+            "inspected_at": utcnow(),
+            "inspection_error": None,
+        })
+    except Exception as e:
+        await service.update(source_id, {
+            "inspection_status": "failed",
+            "inspection_error": str(e)[:500],
+        })
+        raise HTTPException(status_code=500, detail=ApiErrorResponse(
+            error=ApiError(code="MEDIA_INSPECTION_FAILED", message=f"Reinspection failed: {e}",
+                           retryable=True),
+            meta=get_meta(request)).model_dump())
+
+    return ApiResponse(data=SourceResponse.model_validate(updated), meta=get_meta(request))
+
+
+@router.delete("/sources/{source_id}/file")
+async def delete_source_file(request: Request, source_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete the stored file for a source. Does not delete the source record."""
+    validate_uuid(source_id, "source_id")
+    service = SourceService(SourceRepository(db))
+    data = await service.get(source_id)
+    if not data:
+        raise HTTPException(status_code=404, detail=ApiErrorResponse(
+            error=ApiError(code="SOURCE_NOT_FOUND", message="The requested source does not exist."),
+            meta=get_meta(request)).model_dump())
+    if not data.storage_key:
+        raise HTTPException(status_code=400, detail=ApiErrorResponse(
+            error=ApiError(code="NO_FILE", message="This source has no stored file."),
+            meta=get_meta(request)).model_dump())
+    from app.adapters.storage import LocalStorageAdapter
+    storage = LocalStorageAdapter()
+    # Delete main file
+    await storage.delete(data.storage_key)
+    # Delete thumbnail if exists
+    if data.thumbnail_storage_key:
+        await storage.delete(data.thumbnail_storage_key)
+    # Update source record
+    await service.update(source_id, {
+        "storage_key": None,
+        "thumbnail_storage_key": None,
+        "file_size_bytes": 0,
+        "status": "archived",
+        "inspection_status": "pending",
+    })
+    return ApiResponse(data={"file_deleted": True}, meta=get_meta(request))
 
 
 # ============================================================

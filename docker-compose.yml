@@ -15,6 +15,13 @@ services:
     volumes:
       - clipz_data:/app/data
       - clipz_storage:/app/storage
+      - clipz_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; resp = urllib.request.urlopen('http://localhost:8000/api/v1/health'); assert resp.status == 200"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   web:
@@ -25,10 +32,12 @@ services:
       - "3000:3000"
     environment:
       - VITE_API_MODE=real
-      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+      - VITE_API_BASE_URL=http://api:8000/api/v1
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   clipz_data:
   clipz_storage:
+  clipz_uploads:
