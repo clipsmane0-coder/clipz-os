@@ -27,7 +27,7 @@ const statusLabels: Record<string, string> = {
 const allClips: (CandidateClip & { views?: number; likes?: number; comments?: number; platform?: string })[] = [
   ...candidateClips.map((c, i) => ({
     ...c,
-    status: i % 4 === 0 ? "published" : i % 4 === 1 ? "scheduled" : i % 4 === 2 ? "rendered" : "approved",
+    status: (i % 4 === 0 ? "published" : i % 4 === 1 ? "scheduled" : i % 4 === 2 ? "rendered" : "approved") as CandidateClip["status"],
     views: i * 12500 + Math.floor(Math.random() * 50000),
     likes: Math.floor((i * 12500 + Math.floor(Math.random() * 50000)) * 0.07),
     comments: Math.floor((i * 12500 + Math.floor(Math.random() * 50000)) * 0.012),
@@ -36,7 +36,7 @@ const allClips: (CandidateClip & { views?: number; likes?: number; comments?: nu
   ...candidateClips.slice(0, 6).map((c, i) => ({
     ...c,
     id: `${c.id}-b`,
-    status: "published" as const,
+    status: "published" as CandidateClip["status"],
     views: 80000 + i * 35000,
     likes: Math.floor((80000 + i * 35000) * 0.08),
     comments: Math.floor((80000 + i * 35000) * 0.015),
