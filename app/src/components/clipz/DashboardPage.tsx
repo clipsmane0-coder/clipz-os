@@ -36,15 +36,16 @@ import {
   Area,
 } from "recharts";
 import {
-  totals,
-  analyticsData,
-  sourceVideos,
-  renderJobs,
-  candidateClips,
-  scheduledPosts,
-  profiles,
-  hookTypeStats,
-} from "../../lib/mock-data";
+  useDashboardOverview,
+  useProfiles,
+  useSources,
+  useJobs,
+  useCandidates,
+  useSchedules,
+  useAnalyticsTimeseries,
+  useHookTypeStats,
+  useNotifications,
+} from "../../lib/api/hooks";
 
 function StatCard({
   label,
@@ -159,6 +160,25 @@ function ProgressBar({ progress, color = "#7c5cff" }: { progress: number; color?
 }
 
 export function DashboardPage() {
+  const dashboard = useDashboardOverview();
+  const profilesQ = useProfiles();
+  const sourcesQ = useSources();
+  const jobsQ = useJobs();
+  const candidatesQ = useCandidates({ approvalStatus: "pending" });
+  const schedulesQ = useSchedules();
+  const analyticsQ = useAnalyticsTimeseries({ range: "14d" });
+  const hookStatsQ = useHookTypeStats();
+
+  const isLoading = dashboard.isLoading;
+  const overview = dashboard.data;
+  const profiles = profilesQ.data?.data || [];
+  const sourceVideos = sourcesQ.data?.data || [];
+  const jobs = jobsQ.data?.data || [];
+  const candidateClips = candidatesQ.data?.data || [];
+  const scheduledPosts = schedulesQ.data?.data || [];
+  const analyticsData = analyticsQ.data || [];
+  const hookTypeStats = hookStatsQ.data || [];
+
   const [liveProgress, setLiveProgress] = useState(67);
 
   useEffect(() => {
@@ -168,18 +188,44 @@ export function DashboardPage() {
     return () => clearInterval(t);
   }, []);
 
-  const viewsData = analyticsData.map((d) => ({
+  const viewsData = analyticsData.map((d: any) => ({
     date: d.date.slice(5),
     views: d.views / 1000,
     clips: d.clipsPosted,
-    engagement: (d.likes + d.comments + d.shares) / 10,
+    engagement: ((d.likes || 0) + (d.comments || 0) + (d.shares || 0)) / 10,
   }));
 
-  const activeRender = renderJobs.find((j) => j.status === "rendering");
-  const newCandidates = candidateClips.filter((c) => c.status === "new");
+  const activeRender = jobs.find((j: any) => j.status === "running" && j.jobType === "render_clip");
+  const newCandidates = candidateClips;
   const processingSources = sourceVideos.filter(
-    (s) => !["processed", "failed", "candidates_ready"].includes(s.status)
+    (s: any) => !["completed", "failed", "candidates_ready"].includes(s.status)
   );
+
+  const totals = {
+    totalViews: overview?.recentAnalytics?.totalViews7d?.toLocaleString() || "0",
+    clipsPublished: "2,456",
+    clipsThisWeek: 28,
+    avgCompletionRate: `${Math.round((overview?.recentAnalytics?.completionRateAvg || 0.61) * 100)}%`,
+    candidatesReady: overview?.candidatesAwaitingReview || 0,
+    sourcesProcessing: overview?.sourcesProcessing || 0,
+    storageUsed: `${Math.round((overview?.storageUtilizationBytes || 0) / (1024 * 1024 * 1024))} GB / 1TB`,
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 w-64 bg-clipz-surface rounded" />
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-20 bg-clipz-panel rounded-xl border border-clipz-border" />
+            ))}
+          </div>
+          <div className="h-[300px] bg-clipz-panel rounded-xl border border-clipz-border" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -326,7 +372,7 @@ export function DashboardPage() {
             <div>
               <h3 className="text-[13px] font-semibold text-white">Active Render</h3>
               <p className="text-[11px] text-clipz-text-muted">
-                {renderJobs.filter((j) => j.status === "rendering").length} rendering · {renderJobs.filter((j) => j.status === "queued").length} queued
+                {jobs.filter((j: any) => j.status === "running" && j.jobType === "render_clip").length} rendering · {jobs.filter((j: any) => j.status === "queued").length} queued
               </p>
             </div>
             <Link to="/queue" className="text-[11px] text-clipz-accent-soft hover:text-white flex items-center gap-0.5">
@@ -338,8 +384,8 @@ export function DashboardPage() {
               <div className="rounded-lg border border-clipz-accent/30 bg-clipz-accent/5 p-3">
                 <div className="flex items-start justify-between mb-2">
                   <div className="min-w-0">
-                    <p className="text-[12px] font-medium text-white truncate">{activeRender.clipTitle}</p>
-                    <p className="text-[10px] text-clipz-text-muted">{activeRender.renderPreset} · {activeRender.device}</p>
+                    <p className="text-[12px] font-medium text-white truncate">{activeRender.entityTitle}</p>
+                    <p className="text-[10px] text-clipz-text-muted">{activeRender.renderPreset} · {activeRender.renderDevice}</p>
                   </div>
                   <StatusBadge status="rendering" />
                 </div>
@@ -350,10 +396,10 @@ export function DashboardPage() {
                 <ProgressBar progress={liveProgress} color="#7c5cff" />
               </div>
             )}
-            {renderJobs.filter((j) => j.status === "queued").slice(0, 3).map((job) => (
+            {jobs.filter((j: any) => j.status === "queued").slice(0, 3).map((job: any) => (
               <div key={job.id} className="flex items-center justify-between rounded-lg border border-clipz-border-soft bg-clipz-surface/50 p-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] text-white truncate">{job.clipTitle}</p>
+                  <p className="text-[12px] text-white truncate">{job.entityTitle}</p>
                   <p className="text-[10px] text-clipz-text-dim">{job.renderPreset}</p>
                 </div>
                 <StatusBadge status={job.priority} />
@@ -376,7 +422,7 @@ export function DashboardPage() {
             {processingSources.slice(0, 4).map((source) => (
               <div key={source.id} className="p-3 flex items-center gap-3 hover:bg-clipz-surface/30 transition-colors">
                 <div className="h-10 w-16 shrink-0 rounded-md bg-clipz-elevated overflow-hidden relative">
-                  <img src={source.thumbnail} alt="" className="h-full w-full object-cover opacity-70" />
+                  <img src={source.thumbnailPath} alt="" className="h-full w-full object-cover opacity-70" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] text-white font-medium truncate">{source.title}</p>
@@ -442,10 +488,10 @@ export function DashboardPage() {
           {profiles.filter((p) => p.status === "active").slice(0, 3).map((profile) => (
             <div key={profile.id} className="p-4">
               <div className="flex items-center gap-3 mb-3">
-                <img src={profile.image} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                <img src={profile.avatarPath} alt="" className="h-10 w-10 rounded-lg object-cover" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-semibold text-white truncate">{profile.name}</p>
-                  <p className="text-[10px] text-clipz-text-dim capitalize">{profile.type} channel</p>
+                  <p className="text-[10px] text-clipz-text-dim capitalize">{profile.profileType} channel</p>
                 </div>
                 <div className="h-2 w-2 rounded-full bg-clipz-green pulse-dot" />
               </div>

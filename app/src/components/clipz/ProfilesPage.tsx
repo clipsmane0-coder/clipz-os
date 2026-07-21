@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Plus, MoreHorizontal, Target, Video, Globe, Zap, Shield, Search } from "lucide-react";
-import { profiles, Profile, ProfileType } from "../../lib/mock-data";
+import { useProfiles, useBrandingPresets, useCaptionPresets, useRenderPresets, useScoringPresets } from "../../lib/api/hooks";
+import type { ProfileType } from "../../lib/types/clipz";
 
 const typeLabels: Record<ProfileType, string> = {
   general: "General Channel",
@@ -18,7 +19,7 @@ const typeColors: Record<ProfileType, string> = {
   manual: "bg-amber-500/15 text-amber-400 border-amber-500/20",
 };
 
-function ProfileCard({ profile, onEdit }: { profile: Profile; onEdit: (p: Profile) => void }) {
+function ProfileCard({ profile, onEdit }: { profile: any; onEdit: (p: any) => void }) {
   return (
     <div className="group relative overflow-hidden rounded-xl border border-clipz-border bg-clipz-panel transition-all hover:border-clipz-accent/40 hover:shadow-lg hover:shadow-violet-500/5">
       <div className="h-20 bg-gradient-to-br from-violet-600/20 via-transparent to-cyan-500/10 relative overflow-hidden">
