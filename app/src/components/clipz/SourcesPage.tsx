@@ -18,23 +18,29 @@ import type { SourceStatus } from "../../lib/types/clipz";
 import type { FSourceView } from "../../lib/api/mapper";
 
 const statusLabels: Record<SourceStatus, string> = {
+  new: "New",
   validating: "Validating",
   queued: "Queued",
   transcribing: "Transcribing",
   analyzing: "Analyzing",
   candidates_ready: "Candidates Ready",
-  processed: "Processed",
+  needs_review: "Needs Review",
+  completed: "Completed",
   failed: "Failed",
+  archived: "Archived",
 };
 
 const statusColors: Record<SourceStatus, string> = {
+  new: "bg-pink-500/15 text-pink-400 border-pink-500/20",
   validating: "bg-amber-500/15 text-amber-400 border-amber-500/20",
   queued: "bg-zinc-500/15 text-zinc-400 border-zinc-500/20",
   transcribing: "bg-cyan-500/15 text-cyan-400 border-cyan-500/20",
   analyzing: "bg-violet-500/15 text-violet-400 border-violet-500/20",
   candidates_ready: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
-  processed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
+  needs_review: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20",
+  completed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
   failed: "bg-rose-500/15 text-rose-400 border-rose-500/20",
+  archived: "bg-zinc-500/15 text-zinc-400 border-zinc-500/20",
 };
 
 function formatDuration(seconds: number) {

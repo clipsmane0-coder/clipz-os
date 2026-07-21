@@ -610,150 +610,75 @@ export function useSystemSettings(): UseQueryResult<any> {
 // ============================================================
 // VIEW MODEL HOOKS (composed for UI display)
 // ============================================================
+// These hooks wrap the base data hooks and compose view models.
+// They use `as any` because spreading a TanStack Query result
+// (a discriminated union) produces an object that TypeScript
+// can't statically verify as a valid union variant. At runtime
+// the data shape is correct.
 
 // --- Profiles ---
-export function useProfileList(params: UseProfilesParams = {}): UseQueryResult<{
-  data: FProfileView[];
-  total: number;
-  page: number;
-  pageSize: number;
-}> {
-  const profilesQ = useProfiles(params);
+export function useProfileList(params: UseProfilesParams = {}): UseQueryResult<{ data: FProfileView[]; total: number; page: number; pageSize: number }> {
+  const q = useProfiles(params);
   return {
-    ...profilesQ,
-    data: profilesQ.data
-      ? {
-          ...profilesQ.data,
-          data: profilesQ.data.data.map((p) => composeProfileView(p, [], [])),
-        }
-      : undefined,
-  } as UseQueryResult<{ data: FProfileView[]; total: number; page: number; pageSize: number }>;
+    ...q,
+    data: q.data ? { ...q.data, data: q.data.data.map((p: any) => composeProfileView(p, [], [])) } : undefined,
+  } as any;
 }
 
 // --- Sources ---
-export function useSourceList(params: UseSourcesParams = {}): UseQueryResult<{
-  data: FSourceView[];
-  total: number;
-  page: number;
-  pageSize: number;
-}> {
-  const sourcesQ = useSources(params);
+export function useSourceList(params: UseSourcesParams = {}): UseQueryResult<{ data: FSourceView[]; total: number; page: number; pageSize: number }> {
+  const q = useSources(params);
   const profilesQ = useProfiles({ pageSize: 100 });
   return {
-    ...sourcesQ,
-    data: sourcesQ.data && profilesQ.data
-      ? {
-          ...sourcesQ.data,
-          data: sourcesQ.data.data.map((s) => {
-            const profile = profilesQ.data.data.find((p) => p.id === s.profileId);
-            return composeSourceView(s, profile?.name || "");
-          }),
-        }
+    ...q,
+    data: q.data && profilesQ.data
+      ? { ...q.data, data: q.data.data.map((s: any) => composeSourceView(s, (profilesQ.data.data as any[]).find((p: any) => p.id === s.profileId)?.name || "")) }
       : undefined,
-  } as UseQueryResult<{ data: FSourceView[]; total: number; page: number; pageSize: number }>;
+  } as any;
 }
 
 // --- Candidates ---
-export function useCandidateList(params: UseCandidatesParams = {}): UseQueryResult<{
-  data: FCandidateView[];
-  total: number;
-  page: number;
-  pageSize: number;
-}> {
-  const candidatesQ = useCandidates(params);
+export function useCandidateList(params: UseCandidatesParams = {}): UseQueryResult<{ data: FCandidateView[]; total: number; page: number; pageSize: number }> {
+  const q = useCandidates(params);
   return {
-    ...candidatesQ,
-    data: candidatesQ.data
-      ? {
-          ...candidatesQ.data,
-          data: candidatesQ.data.data.map((c) => composeCandidateView(c, c.scoreBreakdown || [])),
-        }
-      : undefined,
-  } as UseQueryResult<{ data: FCandidateView[]; total: number; page: number; pageSize: number }>;
+    ...q,
+    data: q.data ? { ...q.data, data: q.data.data.map((c: any) => composeCandidateView(c, c.scoreBreakdown || [])) } : undefined,
+  } as any;
 }
 
 // --- Jobs (render queue) ---
-export function useJobList(params: UseJobsParams = {}): UseQueryResult<{
-  data: FJobView[];
-  total: number;
-  page: number;
-  pageSize: number;
-}> {
-  const jobsQ = useJobs(params);
+export function useJobList(params: UseJobsParams = {}): UseQueryResult<{ data: FJobView[]; total: number; page: number; pageSize: number }> {
+  const q = useJobs(params);
   return {
-    ...jobsQ,
-    data: jobsQ.data
-      ? {
-          ...jobsQ.data,
-          data: jobsQ.data.data.map((j) => composeJobView(j)),
-        }
-      : undefined,
-  } as UseQueryResult<{ data: FJobView[]; total: number; page: number; pageSize: number }>;
+    ...q,
+    data: q.data ? { ...q.data, data: q.data.data.map((j: any) => composeJobView(j)) } : undefined,
+  } as any;
 }
 
 // --- Schedules (calendar) ---
-export function useScheduleList(params: UseSchedulesParams = {}): UseQueryResult<{
-  data: FScheduleView[];
-  total: number;
-  page: number;
-  pageSize: number;
-}> {
-  const schedQ = useSchedules(params);
+export function useScheduleList(params: UseSchedulesParams = {}): UseQueryResult<{ data: FScheduleView[]; total: number; page: number; pageSize: number }> {
+  const q = useSchedules(params);
   return {
-    ...schedQ,
-    data: schedQ.data
-      ? {
-          ...schedQ.data,
-          data: schedQ.data.data.map((s) => composeScheduleView(s)),
-        }
-      : undefined,
-  } as UseQueryResult<{ data: FScheduleView[]; total: number; page: number; pageSize: number }>;
+    ...q,
+    data: q.data ? { ...q.data, data: q.data.data.map((s: any) => composeScheduleView(s)) } : undefined,
+  } as any;
 }
 
 // --- Library (published + scheduled candidates with stats) ---
-export function useLibrary(params: UseCandidatesParams = {}): UseQueryResult<{
-  data: FLibraryItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-}> {
-  const candidatesQ = useCandidates(params);
+export function useLibrary(params: UseCandidatesParams = {}): UseQueryResult<{ data: FLibraryItem[]; total: number; page: number; pageSize: number }> {
+  const q = useCandidates(params);
   return {
-    ...candidatesQ,
-    data: candidatesQ.data
+    ...q,
+    data: q.data
       ? {
-          ...candidatesQ.data,
-          data: candidatesQ.data.data.flatMap((c, i) => {
+          ...q.data,
+          data: q.data.data.flatMap((c: any, i: number) => {
             const items: FLibraryItem[] = [];
-            // Primary item
-            items.push(
-              composeLibraryItem(c, c.scoreBreakdown || [], {
-                views: i * 12500 + Math.floor(Math.random() * 50000),
-                likes: Math.floor((i * 12500 + 10000) * 0.07),
-                comments: Math.floor((i * 12500 + 10000) * 0.012),
-                platform: (["tiktok", "instagram", "youtube", "threads"] as const)[i % 4],
-                publishedAt: i % 2 === 0 ? new Date(Date.now() - i * 86400000).toISOString() : undefined,
-              })
-            );
-            // Add a few extra published variants for library depth
-            if (i < 6) {
-              items.push(
-                composeLibraryItem(
-                  { ...c, id: `${c.id}-b`, thumbnailPath: c.thumbnailPath },
-                  c.scoreBreakdown || [],
-                  {
-                    views: 80000 + i * 35000,
-                    likes: Math.floor((80000 + i * 35000) * 0.08),
-                    comments: Math.floor((80000 + i * 35000) * 0.015),
-                    platform: (["tiktok", "instagram", "youtube", "threads"] as const)[(i + 1) % 4],
-                    publishedAt: new Date(Date.now() - (i + 3) * 86400000).toISOString(),
-                  }
-                )
-              );
-            }
+            items.push(composeLibraryItem(c, c.scoreBreakdown || [], { views: i * 12500 + Math.floor(Math.random() * 50000), likes: Math.floor((i * 12500 + 10000) * 0.07), comments: Math.floor((i * 12500 + 10000) * 0.012), platform: (["tiktok", "instagram", "youtube", "threads"] as const)[i % 4], publishedAt: i % 2 === 0 ? new Date(Date.now() - i * 86400000).toISOString() : undefined }));
+            if (i < 6) items.push(composeLibraryItem({ ...c, id: `${c.id}-b`, thumbnailPath: c.thumbnailPath }, c.scoreBreakdown || [], { views: 80000 + i * 35000, likes: Math.floor((80000 + i * 35000) * 0.08), comments: Math.floor((80000 + i * 35000) * 0.015), platform: (["tiktok", "instagram", "youtube", "threads"] as const)[(i + 1) % 4], publishedAt: new Date(Date.now() - (i + 3) * 86400000).toISOString() }));
             return items;
           }),
         }
       : undefined,
-  } as UseQueryResult<{ data: FLibraryItem[]; total: number; page: number; pageSize: number }>;
+  } as any;
 }

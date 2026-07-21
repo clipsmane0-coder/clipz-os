@@ -25,26 +25,6 @@ const statusLabels: Record<string, string> = {
   rendering: "Rendering",
 };
 
-const allClips: (CandidateClip & { views?: number; likes?: number; comments?: number; platform?: string })[] = [
-  ...candidateClips.map((c, i) => ({
-    ...c,
-    status: (i % 4 === 0 ? "published" : i % 4 === 1 ? "scheduled" : i % 4 === 2 ? "rendered" : "approved") as CandidateClip["status"],
-    views: i * 12500 + Math.floor(Math.random() * 50000),
-    likes: Math.floor((i * 12500 + Math.floor(Math.random() * 50000)) * 0.07),
-    comments: Math.floor((i * 12500 + Math.floor(Math.random() * 50000)) * 0.012),
-    platform: ["TikTok", "Instagram", "YouTube Shorts", "Threads"][i % 4],
-  })),
-  ...candidateClips.slice(0, 6).map((c, i) => ({
-    ...c,
-    id: `${c.id}-b`,
-    status: "published" as CandidateClip["status"],
-    views: 80000 + i * 35000,
-    likes: Math.floor((80000 + i * 35000) * 0.08),
-    comments: Math.floor((80000 + i * 35000) * 0.015),
-    platform: ["TikTok", "Instagram", "YouTube Shorts", "Threads"][i % 4],
-  })),
-];
-
 function formatNumber(n: number) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
   if (n >= 1000) return (n / 1000).toFixed(1) + "K";
@@ -157,7 +137,7 @@ export function LibraryPage() {
               <div className="p-2.5">
                 <p className="text-[11px] font-medium text-white line-clamp-2 leading-snug h-8">{clip.title}</p>
                 <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-[9px] text-clipz-text-dim">{clip.platform || clip.recommendedPlatform}</span>
+                  <span className="text-[9px] text-clipz-text-dim">{clip.platform}</span>
                 </div>
               </div>
             </div>
@@ -194,11 +174,11 @@ export function LibraryPage() {
                         {statusLabels[clip.status] || clip.status}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-clipz-text-muted">{clip.platform || clip.recommendedPlatform}</td>
+                    <td className="py-2.5 px-4 text-clipz-text-muted">{clip.platform}</td>
                     <td className="py-2.5 px-4 text-clipz-text-muted font-mono text-[11px]">{Math.round(clip.duration)}s</td>
                     <td className="py-2.5 px-4">
-                      <span className={`text-[12px] font-bold ${clip.score >= 85 ? "text-emerald-400" : clip.score >= 70 ? "text-amber-400" : "text-rose-400"}`}>
-                        {clip.score}
+                      <span className={`text-[12px] font-bold ${clip.overallScore >= 85 ? "text-emerald-400" : clip.overallScore >= 70 ? "text-amber-400" : "text-rose-400"}`}>
+                        {clip.overallScore}
                       </span>
                     </td>
                     <td className="py-2.5 px-4 text-clipz-text-muted">{clip.views !== undefined ? formatNumber(clip.views) : "-"}</td>

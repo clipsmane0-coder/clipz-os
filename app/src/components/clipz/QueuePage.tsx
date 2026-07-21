@@ -27,7 +27,7 @@ const priorityStyles = {
   low: "bg-zinc-500/10 text-zinc-500 border-zinc-500/15",
 };
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   queued: "bg-amber-500/15 text-amber-400 border-amber-500/20",
   rendering: "bg-violet-500/15 text-violet-400 border-violet-500/20",
   completed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",

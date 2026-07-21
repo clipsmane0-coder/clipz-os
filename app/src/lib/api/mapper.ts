@@ -6,10 +6,10 @@
 //
 // Frontend code uses camelCase exclusively.
 // API wire format is snake_case per the technical spec.
-// ============================================================
-
 import type {
   Profile,
+  ProfilePlatform,
+  ProfileSource,
   Source,
   Candidate,
   CandidateScore,
@@ -26,12 +26,10 @@ import type {
   CaptionPreset,
   RenderPreset,
   ScoringPreset,
-  ProfilePlatform,
-  ProfileSource,
+  ProfilePerformance,
+  DashboardOverview,
   PlatformPost,
   AnalyticsSnapshot,
-  DashboardOverview,
-  ProfilePerformance,
 } from "../types/clipz";
 
 // --- Frontend (camelCase) type definitions ---
@@ -59,6 +57,29 @@ export type FPlatformPost = CamelCased<PlatformPost>;
 export type FAnalyticsSnapshot = CamelCased<AnalyticsSnapshot>;
 export type FDashboardOverview = CamelCased<DashboardOverview>;
 export type FProfilePerformance = CamelCased<ProfilePerformance>;
+
+// Re-export types used by hooks layer
+// Note: camelCased aliases to match snakeToCamel conversion
+export interface HookTypeStat {
+  type: string;
+  count: number;
+  avgViews: number;
+  avgCompletion: number;
+}
+export interface ClipLengthStat {
+  length: string;
+  count: number;
+  avgViews: number;
+  avgCompletion: number;
+}
+export interface AnalyticsPoint {
+  date: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  clipsPosted: number;
+}
 
 // ---- Utility types ----
 

@@ -114,7 +114,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               >
                 <div className="relative h-5 w-5 shrink-0 rounded-full bg-clipz-elevated overflow-hidden">
                   <img
-                    src={p.avatarPath}
+                    src={p.avatarPath || ""}
                     alt=""
                     className="h-full w-full object-cover"
                   />

@@ -258,12 +258,12 @@ export function AnalyticsPage() {
                 <tr key={profile.id} className="border-b border-clipz-border-soft hover:bg-clipz-surface/30">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <img src={profile.avatarPath} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                      <img src={profile.avatarPath || ""} alt="" className="h-8 w-8 rounded-lg object-cover" />
                       <div><p className="font-medium text-white">{profile.name}</p><p className="text-[10px] text-clipz-text-dim capitalize">{profile.profileType}</p></div>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-white font-medium">{profile.clipsPublished}</td>
-                  <td className="py-3 px-4 text-white">{(profile.clipsPublished * 45 + 10000).toLocaleString()}</td>
+                  <td className="py-3 px-4 text-white font-medium">{profile.clipsPublished ?? 0}</td>
+                  <td className="py-3 px-4 text-white">{((profile.clipsPublished ?? 0) * 45 + 10000).toLocaleString()}</td>
                   <td className="py-3 px-4 text-emerald-400">{(6 + Math.random() * 4).toFixed(1)}%</td>
                   <td className="py-3 px-4 text-cyan-400">{(45 + Math.random() * 20).toFixed(0)}%</td>
                   <td className="py-3 px-4 text-violet-400 font-bold">{(72 + Math.random() * 12).toFixed(0)}</td>

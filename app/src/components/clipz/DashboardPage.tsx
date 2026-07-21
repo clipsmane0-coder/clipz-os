@@ -208,8 +208,8 @@ export function DashboardPage() {
     candidatesReady: overview?.candidatesAwaitingReview || 0,
     sourcesProcessing: overview?.sourcesProcessing || 0,
     storageUsed: `${Math.round((overview?.storageUtilizationBytes || 0) / (1024 * 1024 * 1024))} GB / 1TB`,
-    gpuUtilization: "67",
-    cpuUtilization: "45",
+    gpuUtilization: 67,
+    cpuUtilization: 45,
     errorCount: overview?.failedJobs || 0,
   };
 
