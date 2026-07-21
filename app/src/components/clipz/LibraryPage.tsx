@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Search, Play, Eye, ThumbsUp, MessageSquare, Grid, List } from "lucide-react";
-import { candidateClips, CandidateClip } from "../../lib/mock-data";
+import { useLibrary } from "../../lib/api/hooks";
+import type { FLibraryItem } from "../../lib/api/mapper";
 
 const statusColors = {
   approved: "bg-violet-500/15 text-violet-400 border-violet-500/20",
@@ -55,13 +56,31 @@ export function LibraryPage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
-  const filtered = allClips.filter((c) => {
+  const { data: libraryData, isLoading } = useLibrary({ pageSize: 50 });
+  const allClips = libraryData?.data || [];
+
+  const filtered = allClips.filter((c: FLibraryItem) => {
     if (filter !== "all" && c.status !== filter) return false;
     if (search && !c.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const totalViews = allClips.filter((c) => c.status === "published").reduce((acc, c) => acc + (c.views || 0), 0);
+  const totalViews = allClips.filter((c: FLibraryItem) => c.status === "published").reduce((acc, c) => acc + (c.views || 0), 0);
+
+  if (isLoading) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 w-64 bg-clipz-surface rounded" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-56 bg-clipz-panel rounded-xl border border-clipz-border" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6">

@@ -15,7 +15,7 @@ import {
   Zap,
   ChevronRight,
 } from "lucide-react";
-import { profiles } from "../../lib/mock-data";
+import { useProfiles } from "../../lib/api/hooks";
 
 interface NavItem {
   to: string;
@@ -52,6 +52,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const { data: profilesData } = useProfiles({ pageSize: 50 });
+  const profiles = profilesData?.data || [];
   const activeProfiles = profiles.filter((p) => p.status === "active");
 
   return (
@@ -112,7 +114,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               >
                 <div className="relative h-5 w-5 shrink-0 rounded-full bg-clipz-elevated overflow-hidden">
                   <img
-                    src={p.image}
+                    src={p.avatarPath}
                     alt=""
                     className="h-full w-full object-cover"
                   />

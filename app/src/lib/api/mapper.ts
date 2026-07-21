@@ -60,7 +60,8 @@ export type FAnalyticsSnapshot = CamelCased<AnalyticsSnapshot>;
 export type FDashboardOverview = CamelCased<DashboardOverview>;
 export type FProfilePerformance = CamelCased<ProfilePerformance>;
 
-// Utility type: recurse into object and convert snake_case keys to camelCase
+// ---- Utility types ----
+
 type CamelCased<T> = T extends (infer U)[]
   ? CamelCased<U>[]
   : T extends object
@@ -70,6 +71,89 @@ type CamelCased<T> = T extends (infer U)[]
 type CamelCase<S extends string> = S extends `${infer First}_${infer Rest}`
   ? `${First}${Capitalize<CamelCase<Rest>>}`
   : S;
+
+// ---- View model types (composed for UI display) ----
+
+export type FProfileView = FProfile & {
+  platforms: FProfilePlatform[];
+  profileSources: FProfileSource[];
+  clipsPublished: number;
+  clipsQueued: number;
+  targetPlatforms: string[];
+  sourceChannels: string[];
+  postingSchedule: Record<string, number>;
+  clipLengths: { min: number; max: number };
+  contentThemes: string[];
+  safetyLevel: string;
+  image: string;
+  type: FProfile["profileType"];
+  rightsStatus: FProfile["defaultRightsStatus"];
+  autoApproval: FProfile["autoApprovalEnabled"];
+};
+
+export type FSourceView = FSource & {
+  profileName: string;
+  thumbnail: string;
+  filename: string;
+  sourceUrl: string;
+  duration: number;
+  resolution: string;
+  fps: number;
+  fileSize: string;
+  dateAdded: string;
+  duplicateStatus: string;
+  candidatesFound: number;
+  progress: number;
+  rightsStatus: FSource["rightsStatus"];
+};
+
+export type FCandidateView = Omit<FCandidate, "scoreBreakdown" | "recommendedPlatform" | "hookText" | "transcriptExcerpt" | "thumbnailPath" | "startMs" | "endMs" | "durationMs" | "audioQualityScore" | "visualQualityScore" | "duplicateRisk" | "approvalStatus" | "selectionReason" | "sourceTitle" | "profileName"> & {
+  sourceTitle: string;
+  profileName: string;
+  thumbnail: string;
+  startTime: number;
+  endTime: number;
+  duration: number;
+  hook: string;
+  transcript: string;
+  whySelected: string[];
+  riskFlags: string[];
+  similarity: number;
+  audioQuality: number;
+  visualQuality: number;
+  recommendedPlatform: string;
+  suggestedCaption: string;
+  suggestedHashtags: string[];
+  scoreBreakdown: Record<string, number>;
+  status: string;
+};
+
+export type FJobView = Omit<FJob, "status"> & {
+  clipTitle: string;
+  clipId: string;
+  device: string;
+  progress: number;
+  errorMessage: string | null;
+  retryCount: number;
+  outputSize: string | null;
+  status: string;
+};
+
+export type FScheduleView = FSchedule & {
+  clipId: string | null;
+  clipTitle: string;
+  thumbnail: string;
+  scheduledDate: string;
+  scheduledTime: string;
+};
+
+export type FLibraryItem = Omit<FCandidateView, "recommendedPlatform"> & {
+  views: number;
+  likes: number;
+  comments: number;
+  platform: string;
+  publishedAt: string | null;
+};
 
 // ============================================================
 // Generic conversion

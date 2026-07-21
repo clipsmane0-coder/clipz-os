@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { Eye, ThumbsUp, MessageSquare, Clock, Target, TrendingUp, Download } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
-import { analyticsData, hookTypeStats, clipLengthStats, profiles, totals } from "../../lib/mock-data";
+import {
+  useAnalyticsOverview,
+  useAnalyticsTimeseries,
+  useHookTypeStats,
+  useClipLengthStats,
+  useProfilePerformance,
+  useProfiles,
+} from "../../lib/api/hooks";
 
 const COLORS = ["#7c5cff", "#22d3ee", "#34d399", "#fbbf24", "#f472b6"];
 
@@ -22,7 +29,23 @@ function StatCard({ label, value, change, changeUp, icon, color }: { label: stri
 export function AnalyticsPage() {
   const [range, setRange] = useState("14d");
 
-  const viewsChartData = analyticsData.map((d) => ({
+  const overview = useAnalyticsOverview({ range });
+  const timeseries = useAnalyticsTimeseries({ range });
+  const hookStats = useHookTypeStats();
+  const lengthStats = useClipLengthStats();
+  const profilePerf = useProfilePerformance();
+  const profilesQ = useProfiles({ pageSize: 50 });
+
+  const analyticsData = timeseries.data || [];
+  const hookTypeStats = hookStats.data || [];
+  const clipLengthStats = lengthStats.data || [];
+  const profilePerformance = profilePerf.data || [];
+  const profiles = profilesQ.data?.data || [];
+  const overviewData = overview.data;
+
+  const isLoading = timeseries.isLoading;
+
+  const viewsChartData = analyticsData.map((d: any) => ({
     date: d.date.slice(5),
     views: d.views / 1000,
     likes: d.likes / 10,
@@ -42,6 +65,29 @@ export function AnalyticsPage() {
     { category: "Novelty", actual: 58, predicted: 62 },
     { category: "Visual", actual: 54, predicted: 60 },
   ];
+
+  const totals = {
+    totalViews: overviewData?.totalViews?.toLocaleString() || "0",
+    avgCompletionRate: `${Math.round((overviewData?.completionRateAvg || 0.61) * 100)}%`,
+    engagementRate: `${(overviewData?.engagementRateAvg || 0.087).toFixed(1)}%`,
+    avgWatchTime: "18.3s",
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 w-64 bg-clipz-surface rounded" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-20 bg-clipz-panel rounded-xl border border-clipz-border" />
+            ))}
+          </div>
+          <div className="h-[300px] bg-clipz-panel rounded-xl border border-clipz-border" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -143,7 +189,7 @@ export function AnalyticsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={hookTypeStats} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1b24" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "#5c5e6a", fontSize: 10 }} axisLine={{ stroke: "#1a1b24" }} tickLine={false} tickFormatter={(v) => `${v / 1000}K`} />
+                <XAxis type="number" tick={{ fill: "#5c5e6a", fontSize: 10 }} axisLine={{ stroke: "#1a1b24" }} tickLine={false} tickFormatter={(v: number) => `${v / 1000}K`} />
                 <YAxis dataKey="type" type="category" tick={{ fill: "#8b8d98", fontSize: 10 }} axisLine={false} tickLine={false} width={110} />
                 <Tooltip contentStyle={{ backgroundColor: "#12131a", border: "1px solid #23242f", borderRadius: "8px", fontSize: "11px" }} />
                 <Bar dataKey="avgViews" fill="#7c5cff" radius={[0, 4, 4, 0]} />
@@ -162,7 +208,7 @@ export function AnalyticsPage() {
               <BarChart data={clipLengthStats}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a1b24" vertical={false} />
                 <XAxis dataKey="length" tick={{ fill: "#5c5e6a", fontSize: 10 }} axisLine={{ stroke: "#1a1b24" }} tickLine={false} />
-                <YAxis tick={{ fill: "#5c5e6a", fontSize: 10 }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => `${v / 1000}K`} />
+                <YAxis tick={{ fill: "#5c5e6a", fontSize: 10 }} axisLine={false} tickLine={false} width={40} tickFormatter={(v: number) => `${v / 1000}K`} />
                 <Tooltip contentStyle={{ backgroundColor: "#12131a", border: "1px solid #23242f", borderRadius: "8px", fontSize: "11px" }} />
                 <Bar dataKey="avgViews" fill="#22d3ee" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -212,8 +258,8 @@ export function AnalyticsPage() {
                 <tr key={profile.id} className="border-b border-clipz-border-soft hover:bg-clipz-surface/30">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <img src={profile.image} alt="" className="h-8 w-8 rounded-lg object-cover" />
-                      <div><p className="font-medium text-white">{profile.name}</p><p className="text-[10px] text-clipz-text-dim capitalize">{profile.type}</p></div>
+                      <img src={profile.avatarPath} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                      <div><p className="font-medium text-white">{profile.name}</p><p className="text-[10px] text-clipz-text-dim capitalize">{profile.profileType}</p></div>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-white font-medium">{profile.clipsPublished}</td>

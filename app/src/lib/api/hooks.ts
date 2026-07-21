@@ -42,7 +42,21 @@ import type {
   HookTypeStat,
   ClipLengthStat,
   AnalyticsPoint,
+  FProfileView,
+  FSourceView,
+  FCandidateView,
+  FJobView,
+  FScheduleView,
+  FLibraryItem,
 } from "./mapper";
+import {
+  composeProfileView,
+  composeSourceView,
+  composeCandidateView,
+  composeJobView,
+  composeScheduleView,
+  composeLibraryItem,
+} from "./view-models";
 
 // ---- Query keys ----
 export const queryKeys = {
@@ -591,4 +605,155 @@ export function useSystemSettings(): UseQueryResult<any> {
       return snakeToCamel(resp.data);
     },
   });
+}
+
+// ============================================================
+// VIEW MODEL HOOKS (composed for UI display)
+// ============================================================
+
+// --- Profiles ---
+export function useProfileList(params: UseProfilesParams = {}): UseQueryResult<{
+  data: FProfileView[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const profilesQ = useProfiles(params);
+  return {
+    ...profilesQ,
+    data: profilesQ.data
+      ? {
+          ...profilesQ.data,
+          data: profilesQ.data.data.map((p) => composeProfileView(p, [], [])),
+        }
+      : undefined,
+  } as UseQueryResult<{ data: FProfileView[]; total: number; page: number; pageSize: number }>;
+}
+
+// --- Sources ---
+export function useSourceList(params: UseSourcesParams = {}): UseQueryResult<{
+  data: FSourceView[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const sourcesQ = useSources(params);
+  const profilesQ = useProfiles({ pageSize: 100 });
+  return {
+    ...sourcesQ,
+    data: sourcesQ.data && profilesQ.data
+      ? {
+          ...sourcesQ.data,
+          data: sourcesQ.data.data.map((s) => {
+            const profile = profilesQ.data.data.find((p) => p.id === s.profileId);
+            return composeSourceView(s, profile?.name || "");
+          }),
+        }
+      : undefined,
+  } as UseQueryResult<{ data: FSourceView[]; total: number; page: number; pageSize: number }>;
+}
+
+// --- Candidates ---
+export function useCandidateList(params: UseCandidatesParams = {}): UseQueryResult<{
+  data: FCandidateView[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const candidatesQ = useCandidates(params);
+  return {
+    ...candidatesQ,
+    data: candidatesQ.data
+      ? {
+          ...candidatesQ.data,
+          data: candidatesQ.data.data.map((c) => composeCandidateView(c, c.scoreBreakdown || [])),
+        }
+      : undefined,
+  } as UseQueryResult<{ data: FCandidateView[]; total: number; page: number; pageSize: number }>;
+}
+
+// --- Jobs (render queue) ---
+export function useJobList(params: UseJobsParams = {}): UseQueryResult<{
+  data: FJobView[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const jobsQ = useJobs(params);
+  return {
+    ...jobsQ,
+    data: jobsQ.data
+      ? {
+          ...jobsQ.data,
+          data: jobsQ.data.data.map((j) => composeJobView(j)),
+        }
+      : undefined,
+  } as UseQueryResult<{ data: FJobView[]; total: number; page: number; pageSize: number }>;
+}
+
+// --- Schedules (calendar) ---
+export function useScheduleList(params: UseSchedulesParams = {}): UseQueryResult<{
+  data: FScheduleView[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const schedQ = useSchedules(params);
+  return {
+    ...schedQ,
+    data: schedQ.data
+      ? {
+          ...schedQ.data,
+          data: schedQ.data.data.map((s) => composeScheduleView(s)),
+        }
+      : undefined,
+  } as UseQueryResult<{ data: FScheduleView[]; total: number; page: number; pageSize: number }>;
+}
+
+// --- Library (published + scheduled candidates with stats) ---
+export function useLibrary(params: UseCandidatesParams = {}): UseQueryResult<{
+  data: FLibraryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const candidatesQ = useCandidates(params);
+  return {
+    ...candidatesQ,
+    data: candidatesQ.data
+      ? {
+          ...candidatesQ.data,
+          data: candidatesQ.data.data.flatMap((c, i) => {
+            const items: FLibraryItem[] = [];
+            // Primary item
+            items.push(
+              composeLibraryItem(c, c.scoreBreakdown || [], {
+                views: i * 12500 + Math.floor(Math.random() * 50000),
+                likes: Math.floor((i * 12500 + 10000) * 0.07),
+                comments: Math.floor((i * 12500 + 10000) * 0.012),
+                platform: (["tiktok", "instagram", "youtube", "threads"] as const)[i % 4],
+                publishedAt: i % 2 === 0 ? new Date(Date.now() - i * 86400000).toISOString() : undefined,
+              })
+            );
+            // Add a few extra published variants for library depth
+            if (i < 6) {
+              items.push(
+                composeLibraryItem(
+                  { ...c, id: `${c.id}-b`, thumbnailPath: c.thumbnailPath },
+                  c.scoreBreakdown || [],
+                  {
+                    views: 80000 + i * 35000,
+                    likes: Math.floor((80000 + i * 35000) * 0.08),
+                    comments: Math.floor((80000 + i * 35000) * 0.015),
+                    platform: (["tiktok", "instagram", "youtube", "threads"] as const)[(i + 1) % 4],
+                    publishedAt: new Date(Date.now() - (i + 3) * 86400000).toISOString(),
+                  }
+                )
+              );
+            }
+            return items;
+          }),
+        }
+      : undefined,
+  } as UseQueryResult<{ data: FLibraryItem[]; total: number; page: number; pageSize: number }>;
 }

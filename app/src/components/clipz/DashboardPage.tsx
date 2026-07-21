@@ -37,14 +37,13 @@ import {
 } from "recharts";
 import {
   useDashboardOverview,
-  useProfiles,
-  useSources,
-  useJobs,
-  useCandidates,
-  useSchedules,
+  useProfileList,
+  useSourceList,
+  useJobList,
+  useCandidateList,
+  useScheduleList,
   useAnalyticsTimeseries,
   useHookTypeStats,
-  useNotifications,
 } from "../../lib/api/hooks";
 
 function StatCard({
@@ -161,21 +160,21 @@ function ProgressBar({ progress, color = "#7c5cff" }: { progress: number; color?
 
 export function DashboardPage() {
   const dashboard = useDashboardOverview();
-  const profilesQ = useProfiles();
-  const sourcesQ = useSources();
-  const jobsQ = useJobs();
-  const candidatesQ = useCandidates({ approvalStatus: "pending" });
-  const schedulesQ = useSchedules();
+  const profilesQ = useProfileList({ pageSize: 50 });
+  const sourcesQ = useSourceList({ pageSize: 50 });
+  const jobsQ = useJobList({ jobType: "render_clip", pageSize: 50 });
+  const candidatesQ = useCandidateList({ pageSize: 50 });
+  const schedulesQ = useScheduleList({ pageSize: 50 });
   const analyticsQ = useAnalyticsTimeseries({ range: "14d" });
   const hookStatsQ = useHookTypeStats();
 
   const isLoading = dashboard.isLoading;
   const overview = dashboard.data;
-  const profiles = profilesQ.data?.data || [];
-  const sourceVideos = sourcesQ.data?.data || [];
-  const jobs = jobsQ.data?.data || [];
-  const candidateClips = candidatesQ.data?.data || [];
-  const scheduledPosts = schedulesQ.data?.data || [];
+  const profiles: any[] = profilesQ.data?.data || [];
+  const sourceVideos: any[] = sourcesQ.data?.data || [];
+  const jobs: any[] = jobsQ.data?.data || [];
+  const candidateClips: any[] = candidatesQ.data?.data || [];
+  const scheduledPosts: any[] = schedulesQ.data?.data || [];
   const analyticsData = analyticsQ.data || [];
   const hookTypeStats = hookStatsQ.data || [];
 
@@ -209,6 +208,9 @@ export function DashboardPage() {
     candidatesReady: overview?.candidatesAwaitingReview || 0,
     sourcesProcessing: overview?.sourcesProcessing || 0,
     storageUsed: `${Math.round((overview?.storageUtilizationBytes || 0) / (1024 * 1024 * 1024))} GB / 1TB`,
+    gpuUtilization: "67",
+    cpuUtilization: "45",
+    errorCount: overview?.failedJobs || 0,
   };
 
   if (isLoading) {
@@ -463,8 +465,8 @@ export function DashboardPage() {
                   <p className="text-[10px] text-clipz-text-dim truncate">{clip.hook}</p>
                 </div>
                 <div className="flex flex-col items-end gap-0.5">
-                  <span className={`text-[12px] font-bold ${clip.score >= 85 ? "text-emerald-400" : clip.score >= 70 ? "text-amber-400" : "text-rose-400"}`}>
-                    {clip.score}
+                  <span className={`text-[12px] font-bold ${clip.overallScore >= 85 ? "text-emerald-400" : clip.overallScore >= 70 ? "text-amber-400" : "text-rose-400"}`}>
+                    {clip.overallScore}
                   </span>
                   <span className="text-[9px] text-clipz-text-dim uppercase">score</span>
                 </div>

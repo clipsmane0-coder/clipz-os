@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { Plus, MoreHorizontal, Target, Video, Globe, Zap, Shield, Search } from "lucide-react";
-import { useProfiles, useBrandingPresets, useCaptionPresets, useRenderPresets, useScoringPresets } from "../../lib/api/hooks";
+import { useProfileList, useBrandingPresets, useCaptionPresets, useRenderPresets, useScoringPresets } from "../../lib/api/hooks";
 import type { ProfileType } from "../../lib/types/clipz";
+import type { FProfileView } from "../../lib/api/mapper";
 
 const typeLabels: Record<ProfileType, string> = {
   general: "General Channel",
@@ -19,7 +20,7 @@ const typeColors: Record<ProfileType, string> = {
   manual: "bg-amber-500/15 text-amber-400 border-amber-500/20",
 };
 
-function ProfileCard({ profile, onEdit }: { profile: any; onEdit: (p: any) => void }) {
+function ProfileCard({ profile, onEdit }: { profile: FProfileView; onEdit: (p: FProfileView) => void }) {
   return (
     <div className="group relative overflow-hidden rounded-xl border border-clipz-border bg-clipz-panel transition-all hover:border-clipz-accent/40 hover:shadow-lg hover:shadow-violet-500/5">
       <div className="h-20 bg-gradient-to-br from-violet-600/20 via-transparent to-cyan-500/10 relative overflow-hidden">
@@ -90,13 +91,31 @@ function ProfileCard({ profile, onEdit }: { profile: any; onEdit: (p: any) => vo
 export function ProfilesPage() {
   const [filter, setFilter] = useState<ProfileType | "all">("all");
   const [search, setSearch] = useState("");
-  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<FProfileView | null>(null);
+
+  const { data: profilesData, isLoading } = useProfileList({ pageSize: 50 });
+  const profiles = profilesData?.data || [];
 
   const filtered = profiles.filter((p) => {
-    if (filter !== "all" && p.type !== filter) return false;
+    if (filter !== "all" && p.profileType !== filter) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  if (isLoading) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 w-64 bg-clipz-surface rounded" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-[280px] bg-clipz-panel rounded-xl border border-clipz-border" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6">

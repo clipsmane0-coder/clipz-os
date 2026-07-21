@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, GripVertical, Trash2, Video } from "lucide-react";
-import { scheduledPosts, ScheduledPost } from "../../lib/mock-data";
+import { useScheduleList } from "../../lib/api/hooks";
+import type { FScheduleView } from "../../lib/api/mapper";
 
 const platformColors: Record<string, string> = {
   TikTok: "bg-rose-500",
@@ -32,7 +33,10 @@ export function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [view, setView] = useState<"month" | "week" | "day">("week");
 
-  const postsByDate: Record<string, ScheduledPost[]> = {};
+  const { data: schedData, isLoading } = useScheduleList({ pageSize: 100 });
+  const scheduledPosts = schedData?.data || [];
+
+  const postsByDate: Record<string, FScheduleView[]> = {};
   scheduledPosts.forEach((post) => {
     if (!postsByDate[post.scheduledDate]) postsByDate[post.scheduledDate] = [];
     postsByDate[post.scheduledDate].push(post);
@@ -40,6 +44,21 @@ export function CalendarPage() {
 
   const today = new Date().toISOString().split("T")[0];
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  if (isLoading) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 w-64 bg-clipz-surface rounded" />
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="h-[400px] bg-clipz-panel rounded-xl border border-clipz-border" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const getWeekDays = (baseDate: Date) => {
     const start = new Date(baseDate);

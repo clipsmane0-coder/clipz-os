@@ -21,7 +21,8 @@ import {
   Tag,
   Hash,
 } from "lucide-react";
-import { candidateClips, CandidateClip, sourceVideos } from "../../lib/mock-data";
+import { useCandidateList, useSourceList } from "../../lib/api/hooks";
+import type { FCandidateView } from "../../lib/api/mapper";
 
 function ScoreBar({ label, value, max = 20, color = "#7c5cff" }: { label: string; value: number; max?: number; color?: string }) {
   return (
@@ -37,7 +38,7 @@ function ScoreBar({ label, value, max = 20, color = "#7c5cff" }: { label: string
   );
 }
 
-function CandidateCard({ clip, selected, onClick }: { clip: CandidateClip; selected: boolean; onClick: () => void }) {
+function CandidateCard({ clip, selected, onClick }: { clip: FCandidateView; selected: boolean; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
@@ -49,9 +50,9 @@ function CandidateCard({ clip, selected, onClick }: { clip: CandidateClip; selec
         <img src={clip.thumbnail} alt="" className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute top-2 left-2 flex items-center gap-1.5">
-          <div className={`h-1.5 w-1.5 rounded-full ${clip.score >= 85 ? "bg-emerald-400" : clip.score >= 70 ? "bg-amber-400" : "bg-rose-400"}`} />
-          <span className={`text-[10px] font-bold ${clip.score >= 85 ? "text-emerald-400" : clip.score >= 70 ? "text-amber-400" : "text-rose-400"}`}>
-            {clip.score}
+          <div className={`h-1.5 w-1.5 rounded-full ${clip.overallScore >= 85 ? "bg-emerald-400" : clip.overallScore >= 70 ? "bg-amber-400" : "bg-rose-400"}`} />
+          <span className={`text-[10px] font-bold ${clip.overallScore >= 85 ? "text-emerald-400" : clip.overallScore >= 70 ? "text-amber-400" : "text-rose-400"}`}>
+            {clip.overallScore}
           </span>
         </div>
         <div className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1 py-0.5 text-[9px] text-white font-mono">
@@ -74,16 +75,28 @@ function CandidateCard({ clip, selected, onClick }: { clip: CandidateClip; selec
 }
 
 export function ClipLabPage() {
-  const [selectedId, setSelectedId] = useState(candidateClips[0].id);
+  const [selectedId, setSelectedId] = useState<string>("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(0);
   const [activeTab, setActiveTab] = useState<"scoring" | "caption" | "crop" | "metadata">("scoring");
 
-  const selected = candidateClips.find((c) => c.id === selectedId)!;
-  const source = sourceVideos.find((s) => s.id === selected.sourceId);
+  const { data: candidatesData, isLoading: candidatesLoading } = useCandidateList({ pageSize: 50 });
+  const { data: sourcesData, isLoading: sourcesLoading } = useSourceList({ pageSize: 50 });
+  const candidateClips = candidatesData?.data || [];
+  const sourceVideos = sourcesData?.data || [];
+
+  const isLoading = candidatesLoading || sourcesLoading;
+
+  // Set initial selected candidate
+  if (!isLoading && !selectedId && candidateClips.length > 0) {
+    setSelectedId(candidateClips[0].id);
+  }
+
+  const selected = candidateClips.find((c) => c.id === selectedId);
+  const source = sourceVideos.find((s) => s.id === selected?.sourceId);
 
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || !selected) return;
     const t = setInterval(() => {
       setPlayhead((p) => {
         if (p >= 100) { setIsPlaying(false); return 0; }
@@ -91,14 +104,29 @@ export function ClipLabPage() {
       });
     }, 100);
     return () => clearInterval(t);
-  }, [isPlaying, selected.duration]);
+  }, [isPlaying, selected?.duration, selected?.id]);
 
   const formatTime = (pct: number) => {
-    const current = (pct / 100) * selected.duration;
+    const current = selected ? (pct / 100) * selected.duration : 0;
     const m = Math.floor(current / 60);
     const s = Math.floor(current % 60);
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
+
+  if (isLoading || !selected) {
+    return (
+      <div className="flex h-[calc(100dvh-3.5rem)]">
+        <div className="w-72 border-r border-clipz-border bg-clipz-panel/50 p-4 animate-pulse">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-20 bg-clipz-surface rounded-lg mb-2" />
+          ))}
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-clipz-text-dim text-sm">Loading Clip Lab...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] overflow-hidden">
@@ -247,21 +275,21 @@ export function ClipLabPage() {
           {activeTab === "scoring" && (
             <>
               <div className="text-center">
-                <div className={`text-5xl font-bold mb-1 ${selected.score >= 85 ? "text-emerald-400" : selected.score >= 70 ? "text-amber-400" : "text-rose-400"}`}>
-                  {selected.score}
+                <div className={`text-5xl font-bold mb-1 ${selected.overallScore >= 85 ? "text-emerald-400" : selected.overallScore >= 70 ? "text-amber-400" : "text-rose-400"}`}>
+                  {selected.overallScore}
                 </div>
                 <p className="text-[11px] text-clipz-text-muted">Clip Score / 100</p>
               </div>
 
               <div className="space-y-2.5">
                 <h4 className="text-[11px] font-semibold text-white">Score Breakdown</h4>
-                <ScoreBar label="Hook Strength" value={selected.scoreBreakdown.hook} max={20} color="#7c5cff" />
-                <ScoreBar label="Context Completeness" value={selected.scoreBreakdown.context} max={15} color="#22d3ee" />
-                <ScoreBar label="Emotional Intensity" value={selected.scoreBreakdown.emotion} max={15} color="#f472b6" />
-                <ScoreBar label="Profile Match" value={selected.scoreBreakdown.profileMatch} max={15} color="#34d399" />
-                <ScoreBar label="Quote / Payoff" value={selected.scoreBreakdown.quote} max={10} color="#fbbf24" />
-                <ScoreBar label="Visual Activity" value={selected.scoreBreakdown.visual} max={10} color="#a78bfa" />
-                <ScoreBar label="Topic Relevance" value={selected.scoreBreakdown.topic} max={5} color="#38bdf8" />
+                <ScoreBar label="Hook Strength" value={selected.scoreBreakdown.hook_strength} max={20} color="#7c5cff" />
+                <ScoreBar label="Context Completeness" value={selected.scoreBreakdown.context_completeness} max={15} color="#22d3ee" />
+                <ScoreBar label="Emotional Intensity" value={selected.scoreBreakdown.emotional_intensity} max={15} color="#f472b6" />
+                <ScoreBar label="Profile Match" value={selected.scoreBreakdown.profile_match} max={15} color="#34d399" />
+                <ScoreBar label="Payoff Strength" value={selected.scoreBreakdown.payoff_strength} max={10} color="#fbbf24" />
+                <ScoreBar label="Visual Activity" value={selected.scoreBreakdown.visual_activity} max={10} color="#a78bfa" />
+                <ScoreBar label="Topic Relevance" value={selected.scoreBreakdown.topic_relevance} max={5} color="#38bdf8" />
               </div>
 
               <div className="space-y-2">

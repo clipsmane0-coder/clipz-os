@@ -17,7 +17,8 @@ import {
   HardDrive,
   Search,
 } from "lucide-react";
-import { renderJobs, RenderJob } from "../../lib/mock-data";
+import { useJobList } from "../../lib/api/hooks";
+import type { FJobView } from "../../lib/api/mapper";
 
 const priorityStyles = {
   urgent: "bg-rose-500/15 text-rose-400 border-rose-500/20",
@@ -42,16 +43,40 @@ function ProgressBar({ progress, color = "#7c5cff" }: { progress: number; color?
 }
 
 export function QueuePage() {
-  const [filter, setFilter] = useState<RenderJob["status"] | "all">("all");
+  const [filter, setFilter] = useState<FJobView["status"] | "all">("all");
 
-  const filtered = renderJobs.filter((j) => filter === "all" || j.status === filter);
+  const { data: jobsData, isLoading } = useJobList({ jobType: "render_clip", pageSize: 50 });
+  const renderJobs = jobsData?.data || [];
+
+  const filtered = renderJobs.filter((j) => {
+    if (filter === "all") return true;
+    // Map old status names to spec names for the filter UI
+    if (filter === "rendering") return j.status === "running";
+    return j.status === filter;
+  });
 
   const stats = {
-    rendering: renderJobs.filter((j) => j.status === "rendering").length,
+    rendering: renderJobs.filter((j) => j.status === "running").length,
     queued: renderJobs.filter((j) => j.status === "queued").length,
     completed: renderJobs.filter((j) => j.status === "completed").length,
     failed: renderJobs.filter((j) => j.status === "failed").length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 w-64 bg-clipz-surface rounded" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-28 bg-clipz-panel rounded-xl border border-clipz-border" />
+            ))}
+          </div>
+          <div className="h-[400px] bg-clipz-panel rounded-xl border border-clipz-border" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6">

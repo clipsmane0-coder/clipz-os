@@ -1,11 +1,14 @@
+/**
+ * @deprecated — DO NOT IMPORT FROM THIS FILE.
+ *
+ * All pages have been migrated to the spec-aligned API layer in `lib/api/`.
+ * Use `lib/api/hooks.ts` (TanStack Query hooks) instead.
+ *
+ * This file is kept as a historical reference and will be removed in Phase 2.
+ * It contains no runtime dependencies — it only re-exports types and seed data.
+ */
 // ============================================================
-// CLIPZ — Mock Data (Compatibility Layer)
-// ============================================================
-// DEPRECATED: Use lib/api/hooks instead.
-//
-// This file re-exports data from the spec-aligned mock API layer
-// in a backwards-compatible shape so existing components keep working.
-// New code should use the TanStack Query hooks in lib/api/hooks.ts.
+// CLIPZ — Mock Data (Compatibility Layer — DEPRECATED)
 // ============================================================
 
 import * as seed from "./api/mock-seed";

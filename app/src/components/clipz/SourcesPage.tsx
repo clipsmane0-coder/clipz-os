@@ -13,7 +13,9 @@ import {
   Loader2,
   Film,
 } from "lucide-react";
-import { sourceVideos, SourceStatus } from "../../lib/mock-data";
+import { useSourceList } from "../../lib/api/hooks";
+import type { SourceStatus } from "../../lib/types/clipz";
+import type { FSourceView } from "../../lib/api/mapper";
 
 const statusLabels: Record<SourceStatus, string> = {
   validating: "Validating",
@@ -67,6 +69,9 @@ export function SourcesPage() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"table" | "grid">("table");
 
+  const { data: sourcesData, isLoading } = useSourceList({ pageSize: 50 });
+  const sourceVideos = sourcesData?.data || [];
+
   const filtered = sourceVideos.filter((s) => {
     if (filter !== "all" && s.status !== filter) return false;
     if (search && !s.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -75,11 +80,27 @@ export function SourcesPage() {
 
   const stats = {
     total: sourceVideos.length,
-    processing: sourceVideos.filter((s) => ["transcribing", "analyzing", "validating"].includes(s.status)).length,
-    ready: sourceVideos.filter((s) => s.status === "candidates_ready" || s.status === "processed").length,
+    processing: sourceVideos.filter((s) => ["transcribing", "analyzing", "validating", "queued"].includes(s.status)).length,
+    ready: sourceVideos.filter((s) => s.status === "candidates_ready" || s.status === "completed").length,
     failed: sourceVideos.filter((s) => s.status === "failed").length,
     totalDuration: sourceVideos.reduce((acc, s) => acc + s.duration, 0),
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 w-64 bg-clipz-surface rounded" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-20 bg-clipz-panel rounded-xl border border-clipz-border" />
+            ))}
+          </div>
+          <div className="h-[400px] bg-clipz-panel rounded-xl border border-clipz-border" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
