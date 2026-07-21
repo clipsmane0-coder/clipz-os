@@ -1,113 +1,145 @@
-/* Cascade layer order: reset lowest, then Tailwind/Quanta base, then
- * components and finally utilities — so Quanta's q-* utilities (e.g.
- * q-button-*) always win over global element resets. */
-@layer reset, theme, base, components, utilities;
-
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 @source "../src";
-@source "../packages/quanta/src";
-@import "@higgsfield/quanta/tailwind.css";
-
-/* New in-app Quanta-style components (moved out of the quanta package). Their
- * CSS uses Tailwind v4 @utility/@source, so it must load through this tailwind
- * entry. Ordering mirrors quanta's components.css (composer after button;
- * media-card + generation-card after media). */
-@import "./components/composer/composer.css";
-@import "./components/media-card/media-card.css";
-@import "./components/generation-card/generation-card.css";
-@import "./components/setting-trigger/setting-trigger.css";
-@import "./components/prompt-box/prompt-box.css";
-@import "./components/icon-tile/icon-tile.css";
-
 @import "tw-animate-css";
 
-@custom-variant dark (&:where([data-theme="default-dark"], [data-theme="default-dark"] *));
-
-/*
- * Quanta is the visual source of truth. This file imports Quanta's Tailwind
- * entry once; that entry brings in primitives, semantic theme variables,
- * typography, z-index, border-width, and q-* component utilities.
- *
- * Generated app layout should use normal Tailwind spacing (`p-4`, `gap-2`,
- * `mt-6`, `h-10`) and Quanta semantic utilities for color/type
- * (`bg-q-background-primary`, `text-q-body-md-regular`). Do not use old numeric
- * token classes such as `px-400` / `gap-200`, and do not reach for raw
- * q-spacing vars in app code. Quanta component internals own their q-* classes.
- *
- * The `--spacing: 0.25rem` restoration keeps native Tailwind layout utilities
- * stable for generated apps and legacy scaffold components. The inline theme
- * aliases below keep shadcn-style imports rendering while new UI migrates to
- * Quanta components.
- */
 @theme {
-  --spacing: 0.25rem;
-}
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-@theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --color-clipz-bg: #07070a;
+  --color-clipz-panel: #0c0d12;
+  --color-clipz-surface: #12131a;
+  --color-clipz-elevated: #181922;
+  --color-clipz-border: #23242f;
+  --color-clipz-border-soft: #1a1b24;
+  --color-clipz-text: #e6e7ee;
+  --color-clipz-text-muted: #8b8d98;
+  --color-clipz-text-dim: #5c5e6a;
+  --color-clipz-accent: #7c5cff;
+  --color-clipz-accent-soft: #9b84ff;
+  --color-clipz-accent-glow: rgba(124, 92, 255, 0.4);
+  --color-clipz-cyan: #22d3ee;
+  --color-clipz-green: #34d399;
+  --color-clipz-amber: #fbbf24;
+  --color-clipz-red: #f87171;
+  --color-clipz-pink: #f472b6;
 
-  --color-background: var(--hf-color-background-primary);
-  --color-foreground: var(--hf-color-text-primary);
-  --color-card: var(--hf-color-background-secondary);
-  --color-card-foreground: var(--hf-color-text-primary);
-  --color-popover: var(--hf-color-background-secondary);
-  --color-popover-foreground: var(--hf-color-text-primary);
-  --color-primary: var(--hf-color-button-brand);
-  --color-primary-foreground: var(--hf-color-button-label-brand);
-  --color-secondary: var(--hf-color-background-secondary);
-  --color-secondary-foreground: var(--hf-color-text-primary);
-  --color-muted: var(--hf-color-background-tertiary);
-  --color-muted-foreground: var(--hf-color-text-secondary);
-  --color-accent: var(--hf-color-overlay-hover);
-  --color-accent-foreground: var(--hf-color-text-primary);
-  --color-destructive: var(--hf-color-state-error-bg);
-  --color-destructive-foreground: var(--hf-color-state-error-fg);
-  --color-border: var(--hf-color-border-default);
-  --color-input: var(--hf-color-border-default);
-  --color-ring: var(--hf-color-border-focus);
-  --color-ring-offset-background: var(--hf-color-background-primary);
+  --color-clipz-violet-50: #f5f3ff;
+  --color-clipz-violet-100: #ede9fe;
+  --color-clipz-violet-200: #ddd6fe;
+  --color-clipz-violet-300: #c4b5fd;
+  --color-clipz-violet-400: #a78bfa;
+  --color-clipz-violet-500: #8b5cf6;
+  --color-clipz-violet-600: #7c3aed;
+  --color-clipz-violet-700: #6d28d9;
+  --color-clipz-violet-800: #5b21b6;
+  --color-clipz-violet-900: #4c1d95;
 
-  --color-chart-1: var(--hf-color-lime-500);
-  --color-chart-2: var(--hf-color-pink-500);
-  --color-chart-3: var(--hf-color-blue-500);
-  --color-chart-4: var(--hf-color-yellow-500);
-  --color-chart-5: var(--hf-color-purple-500);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
 
-  --color-sidebar: var(--hf-color-background-secondary);
-  --color-sidebar-foreground: var(--hf-color-text-primary);
-  --color-sidebar-primary: var(--hf-color-button-brand);
-  --color-sidebar-primary-foreground: var(--hf-color-button-label-brand);
-  --color-sidebar-accent: var(--hf-color-overlay-hover);
-  --color-sidebar-accent-foreground: var(--hf-color-text-primary);
-  --color-sidebar-border: var(--hf-color-border-default);
-  --color-sidebar-ring: var(--hf-color-border-focus);
+  --shadow-clipz-glow: 0 0 40px -10px rgba(124, 92, 255, 0.5);
+  --shadow-clipz-card: 0 1px 0 0 rgba(255,255,255,0.03) inset, 0 0 0 1px rgba(255,255,255,0.02), 0 8px 24px -12px rgba(0,0,0,0.6);
 }
 
 :root {
-  --radius: 0.625rem;
+  color-scheme: dark;
 }
 
-@layer base {
-  html {
-    background-color: var(--hf-color-background-primary);
-    color: var(--hf-color-text-primary);
-    color-scheme: dark;
-  }
+html, body {
+  background: #07070a;
+  color: #e6e7ee;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  body {
-    min-height: 100vh;
-    background-color: var(--hf-color-background-primary);
-    color: var(--hf-color-text-primary);
-    font-family: var(--hf-type-family-secondary);
-  }
+body {
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
 
-  * {
-    border-color: var(--hf-color-border-default);
-  }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #23242f;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #323345;
+}
+
+/* Grid pattern utility */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glow effect */
+.glow-accent {
+  box-shadow: 0 0 24px -4px rgba(124, 92, 255, 0.5);
+}
+
+/* Subtle animated gradient border */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(124,92,255,0.2), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Pulse dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+}
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Clipz brand gradient text */
+.text-brand-gradient {
+  background: linear-gradient(135deg, #a78bfa 0%, #7c5cff 50%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Custom range slider */
+input[type="range"].clipz-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #23242f;
+  border-radius: 2px;
+  outline: none;
+}
+input[type="range"].clipz-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #7c5cff;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(124,92,255,0.6);
+}
+
+/* Progress bar background */
+.progress-track {
+  background: rgba(255,255,255,0.05);
 }
