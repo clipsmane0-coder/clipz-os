@@ -1,0 +1,280 @@
+from pydantic import BaseModel, Field
+from typing import Optional, Any, List, Dict
+from datetime import datetime
+
+
+# ============================================================
+# API ENVELOPES
+# ============================================================
+class ApiMeta(BaseModel):
+    request_id: str
+
+
+class ApiResponse(BaseModel):
+    success: bool = True
+    data: Any
+    meta: ApiMeta
+
+
+class PaginatedMeta(BaseModel):
+    page: int
+    page_size: int
+    total: int
+    request_id: str
+
+
+class PaginatedResponse(BaseModel):
+    success: bool = True
+    data: List[Any]
+    meta: PaginatedMeta
+
+
+class ApiError(BaseModel):
+    code: str
+    message: str
+    details: dict = {}
+    retryable: bool = False
+
+
+class ApiErrorResponse(BaseModel):
+    success: bool = False
+    error: ApiError
+    meta: ApiMeta
+
+
+# ============================================================
+# HEALTH
+# ============================================================
+class HealthResponse(BaseModel):
+    api: bool = True
+    database: bool = True
+    version: str = "0.1.0"
+
+
+# ============================================================
+# PROFILES
+# ============================================================
+class ProfileCreate(BaseModel):
+    name: str
+    slug: str
+    profile_type: str = "general"
+    description: str = ""
+    avatar_path: Optional[str] = None
+    language: str = "en"
+    auto_approval_enabled: bool = False
+    default_processing_mode: str = "balanced"
+    default_rights_status: str = "unknown"
+
+
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    profile_type: Optional[str] = None
+    description: Optional[str] = None
+    avatar_path: Optional[str] = None
+    language: Optional[str] = None
+    auto_approval_enabled: Optional[bool] = None
+    default_processing_mode: Optional[str] = None
+    default_rights_status: Optional[str] = None
+
+
+class ProfileResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    profile_type: str
+    description: str
+    avatar_path: Optional[str] = None
+    language: str
+    status: str
+    auto_approval_enabled: bool
+    default_processing_mode: str
+    default_rights_status: str
+    created_by: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# SOURCES
+# ============================================================
+class SourceCreate(BaseModel):
+    title: str
+    profile_id: str
+    source_type: str = "upload"
+    source_url: Optional[str] = None
+    original_filename: Optional[str] = None
+    duration_ms: int = 0
+    width: int = 0
+    height: int = 0
+    frame_rate: float = 0.0
+    language: str = "en"
+    rights_status: str = "unknown"
+
+
+class SourceUpdate(BaseModel):
+    title: Optional[str] = None
+    language: Optional[str] = None
+    rights_status: Optional[str] = None
+    status: Optional[str] = None
+
+
+class SourceResponse(BaseModel):
+    id: str
+    profile_id: str
+    title: str
+    source_type: str
+    original_filename: Optional[str] = None
+    source_url: Optional[str] = None
+    local_path: Optional[str] = None
+    duration_ms: int
+    width: int
+    height: int
+    frame_rate: float
+    codec: Optional[str] = None
+    file_size_bytes: int
+    language: str
+    rights_status: str
+    status: str
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    imported_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# CANDIDATES
+# ============================================================
+class CandidateCreate(BaseModel):
+    source_id: str
+    profile_id: str
+    start_ms: int = 0
+    end_ms: int = 0
+    duration_ms: int = 0
+    title: str = ""
+    transcript_excerpt: str = ""
+    hook_text: str = ""
+    selection_reason: str = ""
+    overall_score: float = 0.0
+
+
+class CandidateUpdate(BaseModel):
+    title: Optional[str] = None
+    approval_status: Optional[str] = None
+    recommended_platform: Optional[str] = None
+
+
+class CandidateResponse(BaseModel):
+    id: str
+    source_id: str
+    profile_id: str
+    start_ms: int
+    end_ms: int
+    duration_ms: int
+    title: str
+    transcript_excerpt: str
+    hook_text: str
+    selection_reason: str
+    overall_score: float
+    crop_confidence: float
+    audio_quality_score: float
+    visual_quality_score: float
+    duplicate_risk: float
+    safety_status: str
+    rights_status: str
+    approval_status: str
+    recommended_platform: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# JOBS
+# ============================================================
+class JobCreate(BaseModel):
+    job_type: str
+    entity_type: str
+    entity_id: str
+    profile_id: Optional[str] = None
+    priority: str = "normal"
+    payload_json: Optional[dict] = None
+
+
+class JobResponse(BaseModel):
+    id: str
+    job_type: str
+    entity_type: str
+    entity_id: str
+    profile_id: Optional[str] = None
+    priority: str
+    status: str
+    progress_percent: int
+    attempts: int
+    max_attempts: int
+    retryable: bool
+    locked_by: Optional[str] = None
+    locked_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+class NotificationResponse(BaseModel):
+    id: str
+    profile_id: Optional[str] = None
+    type: str
+    title: str
+    message: str
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    is_read: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# SETTINGS
+# ============================================================
+class SettingsUpdate(BaseModel):
+    key: str
+    value: str
+
+
+class SettingsResponse(BaseModel):
+    key: str
+    value: str
+    value_type: str
+    description: Optional[str] = None
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# PROFILE SETTINGS
+# ============================================================
+class ProfileSettingsResponse(BaseModel):
+    id: str
+    profile_id: str
+    key: str
+    value: str
+    value_type: str
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

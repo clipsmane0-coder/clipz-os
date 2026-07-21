@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Sidebar } from "./Sidebar";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { Bell, Search, Command, Menu, X, CheckCircle2, AlertTriangle, Info, ArrowRight } from "lucide-react";
 import { useNotifications, useHealth, useProfiles } from "../../lib/api/hooks";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -312,7 +313,9 @@ export function AppShell({ children, title, subtitle, rightSlot }: AppShellProps
           </div>
         )}
 
-        <main className="flex-1 overflow-x-hidden">{children}</main>
+        <main className="flex-1 overflow-x-hidden">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </main>
       </div>
     </div>
   );
