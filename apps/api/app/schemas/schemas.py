@@ -104,6 +104,7 @@ class SourceCreate(BaseModel):
     title: str
     profile_id: str
     source_type: str = "upload"
+    source_kind: str = "video"
     source_url: Optional[str] = None
     original_filename: Optional[str] = None
     duration_ms: int = 0
@@ -111,6 +112,14 @@ class SourceCreate(BaseModel):
     height: int = 0
     frame_rate: float = 0.0
     language: str = "en"
+    rights_status: str = "unknown"
+
+
+class SourceRegisterUrl(BaseModel):
+    profile_id: str
+    source_url: str
+    title: Optional[str] = None
+    platform: Optional[str] = None
     rights_status: str = "unknown"
 
 
@@ -126,21 +135,37 @@ class SourceResponse(BaseModel):
     profile_id: str
     title: str
     source_type: str
+    source_kind: str = "video"
     original_filename: Optional[str] = None
+    original_url: Optional[str] = None
+    storage_key: Optional[str] = None
     source_url: Optional[str] = None
-    local_path: Optional[str] = None
+    mime_type: Optional[str] = None
+    extension: Optional[str] = None
+    file_hash: Optional[str] = None
+    checksum_sha256: Optional[str] = None
     duration_ms: int
     width: int
     height: int
     frame_rate: float
     codec: Optional[str] = None
+    video_codec: Optional[str] = None
+    audio_codec: Optional[str] = None
+    audio_channels: Optional[int] = None
+    audio_sample_rate: Optional[int] = None
+    bitrate: Optional[int] = None
+    container_format: Optional[str] = None
     file_size_bytes: int
     language: str
     rights_status: str
     status: str
+    inspection_status: str = "pending"
+    inspection_error: Optional[str] = None
+    thumbnail_storage_key: Optional[str] = None
     error_code: Optional[str] = None
     error_message: Optional[str] = None
     imported_at: datetime
+    inspected_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

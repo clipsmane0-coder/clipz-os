@@ -10,7 +10,6 @@ Compensates for partial failure:
 - If inspection fails, marks source as failed and preserves diagnostics.
 """
 
-from typing import Optional
 
 
 class SourceIngestionWorkflow:

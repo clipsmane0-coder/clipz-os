@@ -4,7 +4,7 @@ Defines all legal job-state transitions and validates them.
 Every component that changes job status must use this module.
 """
 
-from typing import Dict, Set, Optional
+from typing import Dict, Set
 
 # Canonical job states (from Technical Specification)
 JOB_STATUS_PENDING = "pending"

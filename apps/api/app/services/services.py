@@ -6,8 +6,7 @@ from app.repositories.repositories import (
 )
 from app.models import Profile, Source, Candidate, Job, Notification
 from app.core.state_machine import (
-    is_valid_transition, is_terminal, InvalidTransitionError,
-    JOB_STATUS_QUEUED, JOB_STATUS_CANCELLED, JOB_STATUS_PAUSED,
+    is_valid_transition, InvalidTransitionError,
     JOB_STATUS_RETRYING,
 )
 
