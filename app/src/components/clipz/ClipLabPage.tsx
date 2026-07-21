@@ -74,7 +74,7 @@ function CandidateCard({ clip, selected, onClick }: { clip: FCandidateView; sele
   );
 }
 
-export function ClipLabPage() {
+export function ClipLabPage({ preselectedId }: { preselectedId?: string }) {
   const [selectedId, setSelectedId] = useState<string>("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(0);
@@ -87,10 +87,16 @@ export function ClipLabPage() {
 
   const isLoading = candidatesLoading || sourcesLoading;
 
-  // Set initial selected candidate
-  if (!isLoading && !selectedId && candidateClips.length > 0) {
-    setSelectedId(candidateClips[0].id);
-  }
+  // Set initial selected candidate (preselectedId from URL takes priority)
+  useEffect(() => {
+    if (!isLoading && !selectedId && candidateClips.length > 0) {
+      if (preselectedId && candidateClips.some((c) => c.id === preselectedId)) {
+        setSelectedId(preselectedId);
+      } else {
+        setSelectedId(candidateClips[0].id);
+      }
+    }
+  }, [isLoading, candidateClips, preselectedId, selectedId]);
 
   const selected = candidateClips.find((c) => c.id === selectedId);
   const source = sourceVideos.find((s) => s.id === selected?.sourceId);

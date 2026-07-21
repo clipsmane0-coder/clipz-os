@@ -21,6 +21,9 @@ import { Route as ClipLabRouteImport } from './routes/clip-lab'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SourcesSourceIdRouteImport } from './routes/sources.$sourceId'
+import { Route as ProfilesProfileIdRouteImport } from './routes/profiles.$profileId'
+import { Route as ClipLabCandidateIdRouteImport } from './routes/clip-lab.$candidateId'
 
 const SourcesRoute = SourcesRouteImport.update({
   id: '/sources',
@@ -82,49 +85,73 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SourcesSourceIdRoute = SourcesSourceIdRouteImport.update({
+  id: '/$sourceId',
+  path: '/$sourceId',
+  getParentRoute: () => SourcesRoute,
+} as any)
+const ProfilesProfileIdRoute = ProfilesProfileIdRouteImport.update({
+  id: '/$profileId',
+  path: '/$profileId',
+  getParentRoute: () => ProfilesRoute,
+} as any)
+const ClipLabCandidateIdRoute = ClipLabCandidateIdRouteImport.update({
+  id: '/$candidateId',
+  path: '/$candidateId',
+  getParentRoute: () => ClipLabRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
-  '/clip-lab': typeof ClipLabRoute
+  '/clip-lab': typeof ClipLabRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/library': typeof LibraryRoute
-  '/profiles': typeof ProfilesRoute
+  '/profiles': typeof ProfilesRouteWithChildren
   '/queue': typeof QueueRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/sources': typeof SourcesRoute
+  '/sources': typeof SourcesRouteWithChildren
+  '/clip-lab/$candidateId': typeof ClipLabCandidateIdRoute
+  '/profiles/$profileId': typeof ProfilesProfileIdRoute
+  '/sources/$sourceId': typeof SourcesSourceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
-  '/clip-lab': typeof ClipLabRoute
+  '/clip-lab': typeof ClipLabRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/library': typeof LibraryRoute
-  '/profiles': typeof ProfilesRoute
+  '/profiles': typeof ProfilesRouteWithChildren
   '/queue': typeof QueueRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/sources': typeof SourcesRoute
+  '/sources': typeof SourcesRouteWithChildren
+  '/clip-lab/$candidateId': typeof ClipLabCandidateIdRoute
+  '/profiles/$profileId': typeof ProfilesProfileIdRoute
+  '/sources/$sourceId': typeof SourcesSourceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
-  '/clip-lab': typeof ClipLabRoute
+  '/clip-lab': typeof ClipLabRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/library': typeof LibraryRoute
-  '/profiles': typeof ProfilesRoute
+  '/profiles': typeof ProfilesRouteWithChildren
   '/queue': typeof QueueRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/sources': typeof SourcesRoute
+  '/sources': typeof SourcesRouteWithChildren
+  '/clip-lab/$candidateId': typeof ClipLabCandidateIdRoute
+  '/profiles/$profileId': typeof ProfilesProfileIdRoute
+  '/sources/$sourceId': typeof SourcesSourceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +168,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sources'
+    | '/clip-lab/$candidateId'
+    | '/profiles/$profileId'
+    | '/sources/$sourceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +185,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sources'
+    | '/clip-lab/$candidateId'
+    | '/profiles/$profileId'
+    | '/sources/$sourceId'
   id:
     | '__root__'
     | '/'
@@ -169,21 +202,24 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sources'
+    | '/clip-lab/$candidateId'
+    | '/profiles/$profileId'
+    | '/sources/$sourceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
   CalendarRoute: typeof CalendarRoute
-  ClipLabRoute: typeof ClipLabRoute
+  ClipLabRoute: typeof ClipLabRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   LibraryRoute: typeof LibraryRoute
-  ProfilesRoute: typeof ProfilesRoute
+  ProfilesRoute: typeof ProfilesRouteWithChildren
   QueueRoute: typeof QueueRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  SourcesRoute: typeof SourcesRoute
+  SourcesRoute: typeof SourcesRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -272,22 +308,77 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sources/$sourceId': {
+      id: '/sources/$sourceId'
+      path: '/$sourceId'
+      fullPath: '/sources/$sourceId'
+      preLoaderRoute: typeof SourcesSourceIdRouteImport
+      parentRoute: typeof SourcesRoute
+    }
+    '/profiles/$profileId': {
+      id: '/profiles/$profileId'
+      path: '/$profileId'
+      fullPath: '/profiles/$profileId'
+      preLoaderRoute: typeof ProfilesProfileIdRouteImport
+      parentRoute: typeof ProfilesRoute
+    }
+    '/clip-lab/$candidateId': {
+      id: '/clip-lab/$candidateId'
+      path: '/$candidateId'
+      fullPath: '/clip-lab/$candidateId'
+      preLoaderRoute: typeof ClipLabCandidateIdRouteImport
+      parentRoute: typeof ClipLabRoute
+    }
   }
 }
+
+interface ClipLabRouteChildren {
+  ClipLabCandidateIdRoute: typeof ClipLabCandidateIdRoute
+}
+
+const ClipLabRouteChildren: ClipLabRouteChildren = {
+  ClipLabCandidateIdRoute: ClipLabCandidateIdRoute,
+}
+
+const ClipLabRouteWithChildren =
+  ClipLabRoute._addFileChildren(ClipLabRouteChildren)
+
+interface ProfilesRouteChildren {
+  ProfilesProfileIdRoute: typeof ProfilesProfileIdRoute
+}
+
+const ProfilesRouteChildren: ProfilesRouteChildren = {
+  ProfilesProfileIdRoute: ProfilesProfileIdRoute,
+}
+
+const ProfilesRouteWithChildren = ProfilesRoute._addFileChildren(
+  ProfilesRouteChildren,
+)
+
+interface SourcesRouteChildren {
+  SourcesSourceIdRoute: typeof SourcesSourceIdRoute
+}
+
+const SourcesRouteChildren: SourcesRouteChildren = {
+  SourcesSourceIdRoute: SourcesSourceIdRoute,
+}
+
+const SourcesRouteWithChildren =
+  SourcesRoute._addFileChildren(SourcesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
   CalendarRoute: CalendarRoute,
-  ClipLabRoute: ClipLabRoute,
+  ClipLabRoute: ClipLabRouteWithChildren,
   DashboardRoute: DashboardRoute,
   LibraryRoute: LibraryRoute,
-  ProfilesRoute: ProfilesRoute,
+  ProfilesRoute: ProfilesRouteWithChildren,
   QueueRoute: QueueRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  SourcesRoute: SourcesRoute,
+  SourcesRoute: SourcesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
