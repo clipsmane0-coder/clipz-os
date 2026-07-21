@@ -243,24 +243,21 @@ async def test_job_status_transitions(client):
         "job_type": "test", "entity_type": "candidate", "entity_id": "e1",
     })
     jid = resp.json()["data"]["id"]
-    await client.post(f"/api/v1/jobs/{jid}/pause")
-    resp = await client.get(f"/api/v1/jobs/{jid}")
-    assert resp.json()["data"]["status"] == "paused"
-    await client.post(f"/api/v1/jobs/{jid}/resume")
-    resp = await client.get(f"/api/v1/jobs/{jid}")
-    assert resp.json()["data"]["status"] == "queued"
+    assert resp.json()["data"]["status"] == "pending"
+    # pending → cancelled is valid
+    resp = await client.post(f"/api/v1/jobs/{jid}/cancel")
+    assert resp.json()["data"]["status"] == "cancelled"
 
 
 @pytest.mark.asyncio
-async def test_job_retry_restrictions(client):
+async def test_job_retry_non_retryable(client):
     resp = await client.post("/api/v1/jobs", json={
         "job_type": "test", "entity_type": "candidate", "entity_id": "e2",
-        "payload_json": {"test": True},
     })
     jid = resp.json()["data"]["id"]
-    # Can retry a pending job (it's retryable by default)
+    # Cannot retry from pending (must be failed first)
     resp = await client.post(f"/api/v1/jobs/{jid}/retry")
-    assert resp.status_code == 200
+    assert resp.status_code == 409
 
 
 @pytest.mark.asyncio

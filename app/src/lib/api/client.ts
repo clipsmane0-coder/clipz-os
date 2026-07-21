@@ -1,17 +1,98 @@
 // ============================================================
 // CLIPZ — API Client (mode-switching layer)
 // ============================================================
-// Default: mock mode (local seed data).
-// Set VITE_API_MODE=real and VITE_API_BASE_URL for FastAPI.
+// Separates mock and real API modes explicitly.
+// Unsupported features in real mode throw a clear error
+// instead of silently falling back to mock data.
 // ============================================================
 
 import { apiConfig } from "./config";
+import * as mock from "./mock-client";
+import * as real from "./real-client";
 
-if (apiConfig.isReal) {
-  console.log("CLIPZ API: real mode —", apiConfig.baseUrl);
+function unsupported(name: string): () => never {
+  return () => { throw new Error(`Not available in real API mode yet: ${name}`); };
 }
 
-// Export the full mock client — it works in both modes.
-// In real mode, individual hooks can be swapped to the
-// real client when the backend is deployed.
-export * from "./mock-client";
+// Select implementation based on mode
+const impl = (apiConfig.isReal ? real : mock) as any;
+const unsupportedFn = unsupported;
+
+// === HEALTH ===
+export const getHealth = impl.getHealth;
+
+// === DASHBOARD (unsupported in real mode) ===
+export const getDashboardOverview = apiConfig.isReal ? unsupportedFn("getDashboardOverview") : mock.getDashboardOverview;
+
+// === PROFILES ===
+export const listProfiles = impl.listProfiles;
+export const getProfile = impl.getProfile;
+export const createProfile = impl.createProfile;
+export const updateProfile = impl.updateProfile;
+export const deleteProfile = impl.deleteProfile;
+export const pauseProfile = impl.pauseProfile;
+export const resumeProfile = impl.resumeProfile;
+export const archiveProfile = impl.archiveProfile;
+export const getProfilePlatforms = apiConfig.isReal ? unsupportedFn("getProfilePlatforms") : mock.getProfilePlatforms;
+export const getProfileSources = apiConfig.isReal ? unsupportedFn("getProfileSources") : mock.getProfileSources;
+
+// === SOURCES ===
+export const listSources = impl.listSources;
+export const getSource = impl.getSource;
+export const createSource = impl.createSource;
+export const updateSource = impl.updateSource;
+export const deleteSource = impl.deleteSource;
+export const archiveSource = impl.archiveSource;
+export const getSourceTranscript = apiConfig.isReal ? unsupportedFn("getSourceTranscript") : mock.getSourceTranscript;
+export const getTranscriptSegments = apiConfig.isReal ? unsupportedFn("getTranscriptSegments") : mock.getTranscriptSegments;
+export const getSourceScenes = apiConfig.isReal ? unsupportedFn("getSourceScenes") : mock.getSourceScenes;
+
+// === CANDIDATES ===
+export const listCandidates = impl.listCandidates;
+export const getCandidate = impl.getCandidate;
+export const createCandidate = impl.createCandidate;
+export const updateCandidate = impl.updateCandidate;
+export const approveCandidate = impl.approveCandidate;
+export const rejectCandidate = impl.rejectCandidate;
+export const archiveCandidate = impl.archiveCandidate;
+export const getCandidateScores = apiConfig.isReal ? unsupportedFn("getCandidateScores") : mock.getCandidateScores;
+export const getCandidateEdits = apiConfig.isReal ? unsupportedFn("getCandidateEdits") : mock.getCandidateEdits;
+
+// === JOBS ===
+export const listJobs = impl.listJobs;
+export const getJob = impl.getJob;
+export const createJob = impl.createJob;
+export const retryJob = impl.retryJob;
+export const cancelJob = impl.cancelJob;
+export const pauseJob = impl.pauseJob;
+export const resumeJob = impl.resumeJob;
+
+// === RENDERS (unsupported in real mode) ===
+export const listRenders = apiConfig.isReal ? unsupportedFn("listRenders") : mock.listRenders;
+
+// === SCHEDULES (unsupported in real mode) ===
+export const listSchedules = apiConfig.isReal ? unsupportedFn("listSchedules") : mock.listSchedules;
+export const getSchedule = apiConfig.isReal ? unsupportedFn("getSchedule") : mock.getSchedule;
+
+// === ANALYTICS (unsupported in real mode) ===
+export const getAnalyticsOverview = apiConfig.isReal ? unsupportedFn("getAnalyticsOverview") : mock.getAnalyticsOverview;
+export const getAnalyticsTimeseries = apiConfig.isReal ? unsupportedFn("getAnalyticsTimeseries") : mock.getAnalyticsTimeseries;
+export const getHookTypeStats = apiConfig.isReal ? unsupportedFn("getHookTypeStats") : mock.getHookTypeStats;
+export const getClipLengthStats = apiConfig.isReal ? unsupportedFn("getClipLengthStats") : mock.getClipLengthStats;
+export const getProfilePerformance = apiConfig.isReal ? unsupportedFn("getProfilePerformance") : mock.getProfilePerformance;
+
+// === PRESETS (unsupported in real mode) ===
+export const getBrandingPresets = apiConfig.isReal ? unsupportedFn("getBrandingPresets") : mock.getBrandingPresets;
+export const getCaptionPresets = apiConfig.isReal ? unsupportedFn("getCaptionPresets") : mock.getCaptionPresets;
+export const getRenderPresets = apiConfig.isReal ? unsupportedFn("getRenderPresets") : mock.getRenderPresets;
+export const getScoringPresets = apiConfig.isReal ? unsupportedFn("getScoringPresets") : mock.getScoringPresets;
+
+// === NOTIFICATIONS ===
+export const listNotifications = impl.listNotifications;
+export const markNotificationRead = impl.markNotificationRead;
+
+// === SETTINGS ===
+export const getSystemSettings = impl.getSystemSettings;
+export const updateSystemSetting = impl.updateSystemSetting;
+export const getProfileSettings = impl.getProfileSettings;
+export const updateProfileSetting = impl.updateProfileSetting;

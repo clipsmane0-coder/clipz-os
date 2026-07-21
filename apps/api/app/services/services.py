@@ -5,6 +5,11 @@ from app.repositories.repositories import (
     JobRepository, NotificationRepository, SettingsRepository,
 )
 from app.models import Profile, Source, Candidate, Job, Notification
+from app.core.state_machine import (
+    is_valid_transition, is_terminal, InvalidTransitionError,
+    JOB_STATUS_QUEUED, JOB_STATUS_CANCELLED, JOB_STATUS_PAUSED,
+    JOB_STATUS_RETRYING,
+)
 
 
 class HealthService:
@@ -124,21 +129,23 @@ class JobService:
         return await self.repo.create(data)
 
     async def update_status(self, job_id: str, new_status: str) -> Optional[Job]:
-        valid = {"pending", "queued", "running", "paused", "retrying", "completed", "failed", "cancelled"}
-        if new_status not in valid:
-            raise ValueError(f"Invalid job status: {new_status}")
+        job = await self.repo.get_by_id(job_id)
+        if not job:
+            return None
+        if not is_valid_transition(job.status, new_status):
+            raise InvalidTransitionError(job.status, new_status)
         return await self.repo.update(job_id, {"status": new_status})
 
     async def retry(self, job_id: str) -> Optional[Job]:
         job = await self.repo.get_by_id(job_id)
         if not job:
             return None
-        if not job.retryable:
-            raise ValueError("This job is not retryable")
+        if not is_valid_transition(job.status, JOB_STATUS_RETRYING):
+            raise InvalidTransitionError(job.status, JOB_STATUS_RETRYING)
         if job.attempts >= job.max_attempts:
             raise ValueError(f"Max attempts ({job.max_attempts}) reached")
         return await self.repo.update(job_id, {
-            "status": "queued",
+            "status": JOB_STATUS_RETRYING,
             "attempts": job.attempts + 1,
             "error_code": None,
             "error_message": None,
