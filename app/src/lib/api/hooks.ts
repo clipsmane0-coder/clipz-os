@@ -105,6 +105,7 @@ export function useDashboardOverview(): UseQueryResult<FDashboardOverview> {
       const resp = await api.getDashboardOverview();
       return snakeToCamel(resp.data);
     },
+    refetchInterval: 30000,
   });
 }
 
@@ -210,6 +211,7 @@ export function useSources(params: UseSourcesParams = {}): UseQueryResult<{
         pageSize: resp.meta.page_size,
       };
     },
+    refetchInterval: 10000,
   });
 }
 
@@ -294,6 +296,7 @@ export function useCandidates(params: UseCandidatesParams = {}): UseQueryResult<
         pageSize: resp.meta.page_size,
       };
     },
+    refetchInterval: 15000,
   });
 }
 
@@ -354,6 +357,7 @@ export function useJobs(params: UseJobsParams = {}): UseQueryResult<{
         pageSize: resp.meta.page_size,
       };
     },
+    refetchInterval: 5000,
   });
 }
 
