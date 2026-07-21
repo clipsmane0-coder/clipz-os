@@ -42,7 +42,7 @@ export function ProfileDetail({ profileId }: { profileId: string }) {
     );
   }
 
-  const view = composeProfileView(profileData, platformsData?.data, sourcesData?.data);
+  const view = composeProfileView(profileData, platformsData || [], sourcesData || []);
   const candidates = candidatesData?.data || [];
   const sourceVideos = sourceListData?.data || [];
 

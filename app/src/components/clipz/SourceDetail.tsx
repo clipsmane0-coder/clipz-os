@@ -42,8 +42,8 @@ export function SourceDetail({ sourceId }: { sourceId: string }) {
   }
 
   const view = composeSourceView(sourceData);
-  const transcripts = transcriptData?.data;
-  const scenes = scenesData?.data || [];
+  const transcripts = transcriptData;
+  const scenes = scenesData || [];
   const candidates = candidatesData?.data || [];
 
   return (
