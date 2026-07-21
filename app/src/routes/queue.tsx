@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "../components/clipz/AppShell";
-import { QueuePage } from "../components/clipz/QueuePage";
+import { QueuePage } from "../features/queue/QueuePage";
 
 export const Route = createFileRoute("/queue")({
   component: function QueueRoute() {

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "../components/clipz/AppShell";
-import { SettingsPage } from "../components/clipz/SettingsPage";
+import { SettingsPage } from "../features/settings/SettingsPage";
 
 export const Route = createFileRoute("/settings")({
   component: function SettingsRoute() {

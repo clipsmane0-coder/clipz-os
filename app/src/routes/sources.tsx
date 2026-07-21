@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "../components/clipz/AppShell";
-import { SourcesPage } from "../components/clipz/SourcesPage";
+import { SourcesPage } from "../features/sources/SourcesPage";
 
 export const Route = createFileRoute("/sources")({
   component: function SourcesRoute() {

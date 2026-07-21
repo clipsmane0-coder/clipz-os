@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "../components/clipz/AppShell";
-import { AnalyticsPage } from "../components/clipz/AnalyticsPage";
+import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 
 export const Route = createFileRoute("/analytics")({
   component: function AnalyticsRoute() {

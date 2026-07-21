@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "../components/clipz/AppShell";
-import { ClipLabPage } from "../components/clipz/ClipLabPage";
+import { ClipLabPage } from "../features/clip-lab/ClipLabPage";
 
 export const Route = createFileRoute("/clip-lab/$candidateId")({
   component: function ClipLabCandidateRoute() {

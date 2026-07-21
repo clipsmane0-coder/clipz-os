@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "../components/clipz/AppShell";
-import { ProfileDetail } from "../components/clipz/ProfileDetail";
+import { ProfileDetail } from "../features/profiles/ProfileDetail";
 
 export const Route = createFileRoute("/profiles/$profileId")({
   component: function ProfileDetailRoute() {

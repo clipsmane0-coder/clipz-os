@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "../components/clipz/AppShell";
-import { CalendarPage } from "../components/clipz/CalendarPage";
+import { CalendarPage } from "../features/calendar/CalendarPage";
 
 export const Route = createFileRoute("/calendar")({
   component: function CalendarRoute() {
