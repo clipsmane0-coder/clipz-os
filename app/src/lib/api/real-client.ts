@@ -154,3 +154,27 @@ export function getProfileSettings(profileId: string) {
 export function updateProfileSetting(profileId: string, key: string, value: string) {
   return request<any>("PATCH", `/profiles/${profileId}/settings`, { key, value });
 }
+
+// === SOURCE UPLOAD ===
+export async function uploadSource(profileId: string, file: File, title?: string, rightsStatus?: string): Promise<any> {
+  const form = new FormData();
+  form.append("file", file);
+  let url = `${BASE}/sources/upload?profile_id=${encodeURIComponent(profileId)}`;
+  if (title) url += `&title=${encodeURIComponent(title)}`;
+  if (rightsStatus) url += `&rights_status=${encodeURIComponent(rightsStatus)}`;
+  const res = await fetch(url, { method: "POST", body: form });
+  const json = await res.json();
+  if (!res.ok) throw json;
+  return json;
+}
+
+// === URL REGISTRATION ===
+export async function registerSourceUrl(profileId: string, sourceUrl: string, title?: string, platform?: string, rightsStatus?: string): Promise<any> {
+  return request<any>("POST", "/sources/register-url", {
+    profile_id: profileId,
+    source_url: sourceUrl,
+    title: title,
+    platform: platform,
+    rights_status: rightsStatus || "unknown",
+  });
+}

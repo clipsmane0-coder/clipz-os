@@ -16,6 +16,7 @@ import {
 import { useSourceList } from "../../lib/api/hooks";
 import type { SourceStatus } from "../../lib/types/clipz";
 import type { FSourceView } from "../../lib/api/mapper";
+import { UploadDialog } from "./UploadDialog";
 
 const statusLabels: Record<SourceStatus, string> = {
   new: "New",
@@ -74,6 +75,7 @@ export function SourcesPage() {
   const [filter, setFilter] = useState<SourceStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"table" | "grid">("table");
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const { data: sourcesData, isLoading } = useSourceList({ pageSize: 50 });
   const sourceVideos = sourcesData?.data || [];
@@ -119,7 +121,10 @@ export function SourcesPage() {
           <button className="flex items-center gap-2 rounded-lg border border-clipz-border bg-clipz-surface px-3 py-2 text-[12px] text-white hover:bg-clipz-elevated transition-colors">
             <LinkIcon size={14} /> Add URL
           </button>
-          <button className="flex items-center gap-2 rounded-lg bg-clipz-accent px-3.5 py-2 text-[12px] font-medium text-white hover:bg-clipz-accent/90 transition-colors glow-accent">
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-clipz-accent px-3.5 py-2 text-[12px] font-medium text-white hover:bg-clipz-accent/90 transition-colors glow-accent"
+          >
             <Upload size={14} /> Upload
           </button>
         </div>
@@ -289,6 +294,7 @@ export function SourcesPage() {
           ))}
         </div>
       )}
+      <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 }

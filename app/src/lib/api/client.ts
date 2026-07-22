@@ -96,3 +96,7 @@ export const getSystemSettings = impl.getSystemSettings;
 export const updateSystemSetting = impl.updateSystemSetting;
 export const getProfileSettings = impl.getProfileSettings;
 export const updateProfileSetting = impl.updateProfileSetting;
+
+// === SOURCE UPLOAD ===
+export const uploadSource = impl.uploadSource;
+export const registerSourceUrl = impl.registerSourceUrl;

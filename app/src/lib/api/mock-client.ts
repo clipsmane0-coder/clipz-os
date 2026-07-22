@@ -448,6 +448,41 @@ export async function listNotifications(params: { page?: number; page_size?: num
 }
 
 // ============================================================
+// SOURCE UPLOAD
+// ============================================================
+
+export async function uploadSource(profileId: string, file: File, title?: string, rightsStatus?: string) {
+  await delay(1500);
+  return successResponse({
+    source_id: `mock-upload-${Date.now()}`,
+    storage_key: `sources/mock-${Date.now()}.mp4`,
+    checksum_sha256: "mock-sha256-" + Date.now(),
+    file_size_bytes: file.size,
+    inspection_status: "completed",
+    thumbnail_key: null,
+    job_id: `mock-job-${Date.now()}`,
+    job_status: "queued",
+    status: "completed",
+  });
+}
+
+export async function registerSourceUrl(profileId: string, sourceUrl: string, title?: string, platform?: string, rightsStatus?: string) {
+  await delay(800);
+  return successResponse({
+    id: `mock-url-${Date.now()}`,
+    profile_id: profileId,
+    title: title || sourceUrl.split("/").pop() || "Imported URL",
+    source_type: "url",
+    source_kind: "video",
+    source_url: sourceUrl,
+    status: "new",
+    inspection_status: "pending",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+}
+
+// ============================================================
 // SETTINGS
 // ============================================================
 
