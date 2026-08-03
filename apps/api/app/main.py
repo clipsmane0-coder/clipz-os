@@ -44,6 +44,31 @@ app.include_router(deploy_router)
 
 
 @app.on_event("startup")
+async def create_database_if_not_exists():
+    """Ensure the target database exists before the engine connects to it."""
+    raw_url = settings.database_url
+    if raw_url.startswith("postgresql"):
+        try:
+            # Replace database name with 'postgres' (always exists) to create target DB
+            import asyncpg
+            pg_url = raw_url.replace("+asyncpg", "")
+            pg_url = pg_url.rsplit("/", 1)[0] + "/postgres"
+            conn = await asyncpg.connect(pg_url)
+            target_db = raw_url.rsplit("/", 1)[-1].split("?")[0].strip()
+            exists = await conn.fetchval(
+                "SELECT 1 FROM pg_database WHERE datname = $1", target_db
+            )
+            if not exists:
+                await conn.execute(f'CREATE DATABASE "{target_db}"')
+                logger.info(f"Created database '{target_db}'")
+            else:
+                logger.info(f"Database '{target_db}' already exists")
+            await conn.close()
+        except Exception as e:
+            logger.warning(f"Database creation check failed: {e}")
+
+
+@app.on_event("startup")
 async def run_migrations():
     """Run Alembic migrations on startup. Falls back to create_all()."""
     import os
