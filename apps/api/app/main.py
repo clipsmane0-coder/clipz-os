@@ -53,7 +53,7 @@ async def create_database_if_not_exists():
             import asyncpg
             pg_url = raw_url.replace("+asyncpg", "")
             pg_url = pg_url.rsplit("/", 1)[0] + "/postgres"
-            conn = await asyncpg.connect(pg_url)
+            conn = await asyncpg.connect(pg_url, ssl=False)
             target_db = raw_url.rsplit("/", 1)[-1].split("?")[0].strip()
             exists = await conn.fetchval(
                 "SELECT 1 FROM pg_database WHERE datname = $1", target_db

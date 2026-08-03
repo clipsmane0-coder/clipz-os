@@ -3,10 +3,10 @@ from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
 # Determine SSL mode for PostgreSQL connections
-# Fly.io internal networking requires ssl=disable for private connections
+# Fly.io internal networking requires ssl=False for private connections
 connect_args = {}
 if settings.database_url.startswith("postgresql"):
-    connect_args["ssl"] = "disable"
+    connect_args["ssl"] = False
 
 engine = create_async_engine(settings.database_url, echo=False, connect_args=connect_args)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
