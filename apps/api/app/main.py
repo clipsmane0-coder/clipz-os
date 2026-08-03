@@ -42,6 +42,31 @@ app.include_router(auth_router)
 app.include_router(deploy_router)
 
 
+@app.on_event("startup")
+async def run_migrations():
+    """Run Alembic migrations on startup."""
+    import os
+    import subprocess
+    env = os.environ.copy()
+    env["PYTHONPATH"] = "/app"
+    try:
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            cwd="/app",
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        logger.info(f"Migrations: exit={result.returncode}")
+        if result.stdout:
+            logger.info(f"Migration stdout: {result.stdout.strip()}")
+        if result.stderr:
+            logger.warning(f"Migration stderr: {result.stderr.strip()}")
+    except Exception as e:
+        logger.warning(f"Migration skipped: {e}")
+
+
 # HTTPException handler — preserves structured error envelope
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
