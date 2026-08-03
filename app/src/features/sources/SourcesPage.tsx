@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Loader2,
   Film,
+  Plus,
 } from "lucide-react";
 import { useSourceList } from "../../lib/api/hooks";
 import type { SourceStatus } from "../../lib/types/clipz";
@@ -207,6 +208,38 @@ export function SourcesPage() {
         </div>
       </div>
 
+      {sourceVideos.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-clipz-border bg-clipz-panel/50 p-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-clipz-surface border border-clipz-border mx-auto mb-4">
+            <Film size={28} className="text-clipz-text-dim" />
+          </div>
+          <h3 className="text-[15px] font-semibold text-white mb-1">No sources yet</h3>
+          <p className="text-[12px] text-clipz-text-muted mb-6 max-w-sm mx-auto">
+            Upload a video or add a URL to start generating clips. Sources are processed, analyzed, and turned into candidates.
+          </p>
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-clipz-accent px-4 py-2 text-[12px] font-medium text-white hover:bg-clipz-accent/90 transition-colors"
+          >
+            <Upload size={14} />
+            Upload Your First Source
+          </button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-clipz-border bg-clipz-panel/50 p-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-clipz-surface border border-clipz-border mx-auto mb-4">
+            <Search size={28} className="text-clipz-text-dim" />
+          </div>
+          <h3 className="text-[15px] font-semibold text-white mb-1">No matching sources</h3>
+          <p className="text-[12px] text-clipz-text-muted mb-6">
+            Try a different filter or search term.
+          </p>
+          <button onClick={() => { setFilter("all"); setSearch(""); }} className="text-[12px] text-clipz-accent-soft hover:text-white">
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <>
       {view === "table" && (
         <div className="rounded-xl border border-clipz-border bg-clipz-panel overflow-hidden">
           <div className="overflow-x-auto">
@@ -294,6 +327,7 @@ export function SourcesPage() {
           ))}
         </div>
       )}
+      </>)}
       <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );

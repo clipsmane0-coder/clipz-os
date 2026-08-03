@@ -179,6 +179,49 @@ export function useProfileSources(profileId: string): UseQueryResult<FProfileSou
 }
 
 // ============================================================
+// PROFILE MUTATIONS
+// ============================================================
+
+export function useCreateProfile(): UseMutationResult<any, Error, any> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const resp = await api.createProfile(camelToSnake(data));
+      return resp.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.profiles() });
+    },
+  });
+}
+
+export function useUpdateProfile(): UseMutationResult<any, Error, { id: string; data: any }> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const resp = await api.updateProfile(id, camelToSnake(data));
+      return resp.data;
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.profiles() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile(id) });
+    },
+  });
+}
+
+export function useDeleteProfile(): UseMutationResult<void, Error, string> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.deleteProfile(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.profiles() });
+    },
+  });
+}
+
+// ============================================================
 // SOURCES
 // ============================================================
 
