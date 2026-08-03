@@ -329,7 +329,12 @@ export function ProfilesPage() {
 
   const handleCreate = async (data: any) => {
     try {
-      await createProfile.mutateAsync(data);
+      await createProfile.mutateAsync({
+        ...data,
+        slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+        profile_type: data.type,
+        posting_schedule: {},
+      });
       setShowCreateDialog(false);
       showToast("Profile created successfully", "success");
     } catch (err: any) {
@@ -340,7 +345,13 @@ export function ProfilesPage() {
   const handleUpdate = async (data: any) => {
     if (!editingProfile) return;
     try {
-      await updateProfile.mutateAsync({ id: editingProfile.id, data });
+      await updateProfile.mutateAsync({
+        id: editingProfile.id,
+        data: {
+          ...data,
+          profile_type: data.type,
+        },
+      });
       setEditingProfile(null);
       showToast("Profile updated successfully", "success");
     } catch (err: any) {
