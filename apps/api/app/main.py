@@ -9,6 +9,7 @@ from app.core.middleware import RequestIDMiddleware
 from app.api.v1.routes import router
 from app.auth.routes import router as auth_router
 from app.routers.deploy import router as deploy_router
+from app.models import *  # noqa: F401, F403 — ensure all models are loaded for create_all
 
 setup_logging(settings.log_level)
 logger = logging.getLogger("clipz")
@@ -44,9 +45,11 @@ app.include_router(deploy_router)
 
 @app.on_event("startup")
 async def run_migrations():
-    """Run Alembic migrations on startup."""
+    """Run Alembic migrations on startup. Falls back to create_all()."""
     import os
     import subprocess
+    from app.db.session import engine, Base
+
     env = os.environ.copy()
     env["PYTHONPATH"] = "/app"
     try:
@@ -60,11 +63,22 @@ async def run_migrations():
         )
         logger.info(f"Migrations: exit={result.returncode}")
         if result.stdout:
-            logger.info(f"Migration stdout: {result.stdout.strip()}")
+            logger.info(f"Migration: {result.stdout.strip()}")
         if result.stderr:
-            logger.warning(f"Migration stderr: {result.stderr.strip()}")
+            logger.warning(f"Migration: {result.stderr.strip()}")
+        if result.returncode == 0:
+            return
     except Exception as e:
-        logger.warning(f"Migration skipped: {e}")
+        logger.warning(f"alembic migration failed: {e}")
+
+    # Fallback: create tables directly
+    logger.info("Falling back to create_all()")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Tables created via create_all()")
+    except Exception as e:
+        logger.error(f"create_all() failed: {e}")
 
 
 # HTTPException handler — preserves structured error envelope
