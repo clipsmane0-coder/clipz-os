@@ -9,70 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SourcesRouteImport } from './routes/sources'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
-import { Route as QueueRouteImport } from './routes/queue'
-import { Route as ProfilesRouteImport } from './routes/profiles'
-import { Route as LibraryRouteImport } from './routes/library'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as ClipLabRouteImport } from './routes/clip-lab'
-import { Route as CalendarRouteImport } from './routes/calendar'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SourcesSourceIdRouteImport } from './routes/sources.$sourceId'
-import { Route as ProfilesProfileIdRouteImport } from './routes/profiles.$profileId'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as ClipLabRouteImport } from './routes/clip-lab'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as LibraryRouteImport } from './routes/library'
+import { Route as ProfilesRouteImport } from './routes/profiles'
+import { Route as QueueRouteImport } from './routes/queue'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SigninRouteImport } from './routes/signin'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SourcesRouteImport } from './routes/sources'
 import { Route as ClipLabCandidateIdRouteImport } from './routes/clip-lab.$candidateId'
+import { Route as ProfilesProfileIdRouteImport } from './routes/profiles.$profileId'
+import { Route as SourcesSourceIdRouteImport } from './routes/sources.$sourceId'
 
-const SourcesRoute = SourcesRouteImport.update({
-  id: '/sources',
-  path: '/sources',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
-  id: '/robots.txt',
-  path: '/robots.txt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QueueRoute = QueueRouteImport.update({
-  id: '/queue',
-  path: '/queue',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfilesRoute = ProfilesRouteImport.update({
-  id: '/profiles',
-  path: '/profiles',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LibraryRoute = LibraryRouteImport.update({
-  id: '/library',
-  path: '/library',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClipLabRoute = ClipLabRouteImport.update({
-  id: '/clip-lab',
-  path: '/clip-lab',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalendarRoute = CalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
@@ -80,25 +37,80 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SourcesSourceIdRoute = SourcesSourceIdRouteImport.update({
-  id: '/$sourceId',
-  path: '/$sourceId',
-  getParentRoute: () => SourcesRoute,
+const ClipLabRoute = ClipLabRouteImport.update({
+  id: '/clip-lab',
+  path: '/clip-lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfilesRoute = ProfilesRouteImport.update({
+  id: '/profiles',
+  path: '/profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QueueRoute = QueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SourcesRoute = SourcesRouteImport.update({
+  id: '/sources',
+  path: '/sources',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClipLabCandidateIdRoute = ClipLabCandidateIdRouteImport.update({
+  id: '/$candidateId',
+  path: '/$candidateId',
+  getParentRoute: () => ClipLabRoute,
 } as any)
 const ProfilesProfileIdRoute = ProfilesProfileIdRouteImport.update({
   id: '/$profileId',
   path: '/$profileId',
   getParentRoute: () => ProfilesRoute,
 } as any)
-const ClipLabCandidateIdRoute = ClipLabCandidateIdRouteImport.update({
-  id: '/$candidateId',
-  path: '/$candidateId',
-  getParentRoute: () => ClipLabRoute,
+const SourcesSourceIdRoute = SourcesSourceIdRouteImport.update({
+  id: '/$sourceId',
+  path: '/$sourceId',
+  getParentRoute: () => SourcesRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -112,6 +124,8 @@ export interface FileRoutesByFullPath {
   '/queue': typeof QueueRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRouteWithChildren
   '/clip-lab/$candidateId': typeof ClipLabCandidateIdRoute
@@ -129,6 +143,8 @@ export interface FileRoutesByTo {
   '/queue': typeof QueueRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRouteWithChildren
   '/clip-lab/$candidateId': typeof ClipLabCandidateIdRoute
@@ -147,6 +163,8 @@ export interface FileRoutesById {
   '/queue': typeof QueueRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRouteWithChildren
   '/clip-lab/$candidateId': typeof ClipLabCandidateIdRoute
@@ -166,6 +184,8 @@ export interface FileRouteTypes {
     | '/queue'
     | '/robots.txt'
     | '/settings'
+    | '/signin'
+    | '/signup'
     | '/sitemap.xml'
     | '/sources'
     | '/clip-lab/$candidateId'
@@ -183,6 +203,8 @@ export interface FileRouteTypes {
     | '/queue'
     | '/robots.txt'
     | '/settings'
+    | '/signin'
+    | '/signup'
     | '/sitemap.xml'
     | '/sources'
     | '/clip-lab/$candidateId'
@@ -200,6 +222,8 @@ export interface FileRouteTypes {
     | '/queue'
     | '/robots.txt'
     | '/settings'
+    | '/signin'
+    | '/signup'
     | '/sitemap.xml'
     | '/sources'
     | '/clip-lab/$candidateId'
@@ -218,80 +242,19 @@ export interface RootRouteChildren {
   QueueRoute: typeof QueueRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SettingsRoute: typeof SettingsRoute
+  SigninRoute: typeof SigninRoute
+  SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SourcesRoute: typeof SourcesRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sources': {
-      id: '/sources'
-      path: '/sources'
-      fullPath: '/sources'
-      preLoaderRoute: typeof SourcesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/robots.txt': {
-      id: '/robots.txt'
-      path: '/robots.txt'
-      fullPath: '/robots.txt'
-      preLoaderRoute: typeof RobotsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/queue': {
-      id: '/queue'
-      path: '/queue'
-      fullPath: '/queue'
-      preLoaderRoute: typeof QueueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profiles': {
-      id: '/profiles'
-      path: '/profiles'
-      fullPath: '/profiles'
-      preLoaderRoute: typeof ProfilesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/library': {
-      id: '/library'
-      path: '/library'
-      fullPath: '/library'
-      preLoaderRoute: typeof LibraryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clip-lab': {
-      id: '/clip-lab'
-      path: '/clip-lab'
-      fullPath: '/clip-lab'
-      preLoaderRoute: typeof ClipLabRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendar': {
-      id: '/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof CalendarRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics': {
@@ -301,19 +264,96 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sources/$sourceId': {
-      id: '/sources/$sourceId'
-      path: '/$sourceId'
-      fullPath: '/sources/$sourceId'
-      preLoaderRoute: typeof SourcesSourceIdRouteImport
-      parentRoute: typeof SourcesRoute
+    '/clip-lab': {
+      id: '/clip-lab'
+      path: '/clip-lab'
+      fullPath: '/clip-lab'
+      preLoaderRoute: typeof ClipLabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profiles': {
+      id: '/profiles'
+      path: '/profiles'
+      fullPath: '/profiles'
+      preLoaderRoute: typeof ProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/queue': {
+      id: '/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof QueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sources': {
+      id: '/sources'
+      path: '/sources'
+      fullPath: '/sources'
+      preLoaderRoute: typeof SourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clip-lab/$candidateId': {
+      id: '/clip-lab/$candidateId'
+      path: '/$candidateId'
+      fullPath: '/clip-lab/$candidateId'
+      preLoaderRoute: typeof ClipLabCandidateIdRouteImport
+      parentRoute: typeof ClipLabRoute
     }
     '/profiles/$profileId': {
       id: '/profiles/$profileId'
@@ -322,12 +362,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfilesProfileIdRouteImport
       parentRoute: typeof ProfilesRoute
     }
-    '/clip-lab/$candidateId': {
-      id: '/clip-lab/$candidateId'
-      path: '/$candidateId'
-      fullPath: '/clip-lab/$candidateId'
-      preLoaderRoute: typeof ClipLabCandidateIdRouteImport
-      parentRoute: typeof ClipLabRoute
+    '/sources/$sourceId': {
+      id: '/sources/$sourceId'
+      path: '/$sourceId'
+      fullPath: '/sources/$sourceId'
+      preLoaderRoute: typeof SourcesSourceIdRouteImport
+      parentRoute: typeof SourcesRoute
     }
   }
 }
@@ -377,6 +417,8 @@ const rootRouteChildren: RootRouteChildren = {
   QueueRoute: QueueRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SettingsRoute: SettingsRoute,
+  SigninRoute: SigninRoute,
+  SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SourcesRoute: SourcesRouteWithChildren,
 }

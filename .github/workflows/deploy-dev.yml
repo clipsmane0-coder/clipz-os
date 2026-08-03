@@ -1,0 +1,72 @@
+name: Deploy to Development (Fly.io)
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'apps/api/**'
+      - 'fly.dev.toml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+env:
+  FLY_REGION: iad
+  FLY_APP_NAME: clipz-api-dev
+
+jobs:
+  deploy:
+    name: Build & Deploy to Fly.io
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
+      - name: Extract Git metadata
+        id: meta
+        run: |
+          echo "commit=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "time=$(date -u +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Fly.io
+        run: |
+          flyctl deploy \
+            --config fly.dev.toml \
+            --app ${{ env.FLY_APP_NAME }} \
+            --build-arg GIT_COMMIT=${{ steps.meta.outputs.commit }} \
+            --build-arg DEPLOY_TIME=${{ steps.meta.outputs.time }} \
+            --strategy immediate
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Health check
+        id: health
+        run: |
+          URL="https://${{ env.FLY_APP_NAME }}.fly.dev"
+          echo "Checking $URL/api/v1/health"
+          for i in $(seq 1 6); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL/api/v1/health" 2>/dev/null)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed (attempt $i)"
+              echo "url=$URL" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "Attempt $i failed ($STATUS), retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 6 attempts"
+          exit 1
+
+      - name: Notify
+        if: always()
+        run: |
+          echo "::notice::CLIPZ Dev deployed to ${{ env.FLY_APP_NAME }}.fly.dev"

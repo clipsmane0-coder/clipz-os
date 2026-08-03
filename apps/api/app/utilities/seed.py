@@ -1,18 +1,28 @@
 """Development seed data command.
 
+Creates a labeled demo user and associated demo data.
+Normal accounts (non-demo) receive no automatic content.
+
 Usage:
     PYTHONPATH=. python -m app.utilities.seed
 """
 
 import asyncio
+import uuid
 from datetime import datetime, timezone, timedelta
 
 from app.db.session import async_session
 from app.models import (
-    Profile, Source, Candidate, CandidateScore, Job, Notification,
+    User, Session, Profile, Source, Candidate, CandidateScore, Job, Notification,
     SystemSetting, ProfileSetting, ProfilePlatform, ProfileSource, AuditLog,
 )
 from app.models.models import gen_uuid
+from app.auth.auth import hash_password
+
+
+DEMO_EMAIL = "demo@clipz.local"
+DEMO_PASSWORD = "clipz-demo-2026"
+DEMO_DISPLAY_NAME = "Demo Account"
 
 
 def iso(offset_days=0, offset_hours=0):
@@ -25,10 +35,27 @@ async def seed():
         # Clear existing data in dependency order
         for table in [AuditLog, ProfileSetting, SystemSetting, Notification,
                        Job, CandidateScore, Candidate, Source, ProfileSource,
-                       ProfilePlatform, Profile]:
+                       ProfilePlatform, Profile, Session, User]:
             await session.execute(table.__table__.delete())
         await session.commit()
-        # === PROFILES ===
+
+        # === DEMO USER ===
+        user = User(
+            id=gen_uuid(),
+            email=DEMO_EMAIL,
+            display_name=DEMO_DISPLAY_NAME,
+            password_hash=hash_password(DEMO_PASSWORD),
+            role="owner",
+            is_active=True,
+            created_at=iso(-90),
+            updated_at=iso(-1),
+        )
+        session.add(user)
+        await session.flush()
+
+        print(f"Demo account created: {DEMO_EMAIL} / {DEMO_PASSWORD}")
+
+        # === PROFILES (owned by demo user) ===
         profiles_data = [
             {"name": "Kai Cenat Clips", "slug": "kai-cenat-clips", "profile_type": "creator",
              "description": "High-energy streamer clips. Focus on reactions, arguments, and surprising moments.",
@@ -51,7 +78,8 @@ async def seed():
         ]
         profiles = {}
         for data in profiles_data:
-            p = Profile(id=gen_uuid(), **data, created_at=iso(-90), updated_at=iso(-1))
+            p = Profile(id=gen_uuid(), user_id=user.id, **data,
+                        created_at=iso(-90), updated_at=iso(-1))
             session.add(p)
             profiles[p.slug] = p
         await session.flush()
@@ -184,7 +212,7 @@ async def seed():
             )
             session.add(j)
 
-        # === NOTIFICATIONS ===
+        # === NOTIFICATIONS (owned by demo user) ===
         notif_data = [
             ("action_required", "Candidates ready", "14 new candidates need review.", "source"),
             ("success", "Render complete", "Clip rendered successfully (28 MB).", "candidate"),
@@ -194,7 +222,7 @@ async def seed():
         ]
         for ntype, title, msg, etype in notif_data:
             n = Notification(
-                id=gen_uuid(), type=ntype, title=title, message=msg,
+                id=gen_uuid(), user_id=user.id, type=ntype, title=title, message=msg,
                 entity_type=etype, is_read=False,
                 created_at=iso(-1),
             )
@@ -218,6 +246,7 @@ async def seed():
 
         await session.commit()
         print("Seed complete:")
+        print(f"  Users: 1 (demo)")
         print(f"  Profiles: {len(profiles_data)}")
         print(f"  Sources: {len(sources_data)}")
         print(f"  Candidates: {len(candidates_list)}")

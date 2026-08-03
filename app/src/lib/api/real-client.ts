@@ -8,12 +8,17 @@
 // ============================================================
 
 import { apiConfig } from "./config";
+import { getAuthToken } from "../auth/auth-context";
 
 const BASE = apiConfig.baseUrl;
 
 async function request<T>(method: string, path: string, body?: any): Promise<T> {
   const url = `${BASE}${path}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = getAuthToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   const res = await fetch(url, {
     method,
     headers,
@@ -144,15 +149,15 @@ export function listNotifications(p: Record<string, any> = {}) {
   return request<any>("GET", `/notifications${params(p)}`);
 }
 export function markNotificationRead(id: string) {
-  return request<any>("PATCH", `/notifications/${id}/read`);
+  return request<any>("POST", `/notifications/${id}/read`);
 }
 
 // === PROFILE SETTINGS ===
 export function getProfileSettings(profileId: string) {
-  return request<any>("GET", `/profiles/${profileId}/settings`);
+  return request<any>("GET", `/settings/profile/${profileId}`);
 }
 export function updateProfileSetting(profileId: string, key: string, value: string) {
-  return request<any>("PATCH", `/profiles/${profileId}/settings`, { key, value });
+  return request<any>("PUT", `/settings/profile/${profileId}/${key}`, { key, value });
 }
 
 // === SOURCE UPLOAD ===
@@ -162,7 +167,10 @@ export async function uploadSource(profileId: string, file: File, title?: string
   let url = `${BASE}/sources/upload?profile_id=${encodeURIComponent(profileId)}`;
   if (title) url += `&title=${encodeURIComponent(title)}`;
   if (rightsStatus) url += `&rights_status=${encodeURIComponent(rightsStatus)}`;
-  const res = await fetch(url, { method: "POST", body: form });
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(url, { method: "POST", body: form, headers });
   const json = await res.json();
   if (!res.ok) throw json;
   return json;

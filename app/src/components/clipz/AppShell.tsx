@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Sidebar } from "./Sidebar";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { Bell, Search, Command, Menu, X, CheckCircle2, AlertTriangle, Info, ArrowRight } from "lucide-react";
+import { Bell, Search, Command, Menu, X, CheckCircle2, AlertTriangle, Info, ArrowRight, LogOut, User } from "lucide-react";
 import { useNotifications, useHealth, useProfiles } from "../../lib/api/hooks";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useAuth } from "../../lib/auth/auth-context";
 import type { FNotification } from "../../lib/api/mapper";
 
 interface AppShellProps {
@@ -24,10 +25,31 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 export function AppShell({ children, title, subtitle, rightSlot }: AppShellProps) {
+  const { isAuthenticated, isLoading, user, signOut } = useAuth();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [time, setTime] = useState("");
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.navigate({ to: "/signin" });
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-q-background-primary">
+        <div className="text-q-text-secondary text-sm">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
   const [searchQuery, setSearchQuery] = useState("");
   const [profileSelectorOpen, setProfileSelectorOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -212,6 +234,15 @@ export function AppShell({ children, title, subtitle, rightSlot }: AppShellProps
                   >
                     Manage profiles <ArrowRight size={12} />
                   </Link>
+                  <div className="border-t border-clipz-border-soft px-3 py-2">
+                    <p className="text-[9px] text-clipz-text-dim mb-1">{user?.display_name || user?.email}</p>
+                    <button
+                      onClick={() => { signOut(); setProfileSelectorOpen(false); }}
+                      className="flex items-center gap-1.5 text-[11px] text-clipz-text-dim hover:text-rose-400 transition-colors w-full"
+                    >
+                      <LogOut size={12} /> Sign out
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

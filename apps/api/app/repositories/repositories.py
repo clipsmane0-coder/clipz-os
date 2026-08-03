@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     Profile, Source, Candidate, Job,
-    Notification, SystemSetting, ProfileSetting,
+    Notification, SystemSetting, ProfileSetting, User, Session,
 )
 from app.models.models import utcnow, gen_uuid
 
@@ -15,13 +15,26 @@ class BaseRepository:
 
 
 # ============================================================
+# USER REPOSITORY
+# ============================================================
+class UserRepository(BaseRepository):
+    async def get_by_id(self, user_id: str) -> Optional[User]:
+        result = await self.session.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
+
+    async def get_by_email(self, email: str) -> Optional[User]:
+        result = await self.session.execute(select(User).where(User.email == email))
+        return result.scalar_one_or_none()
+
+
+# ============================================================
 # PROFILE REPOSITORY
 # ============================================================
 class ProfileRepository(BaseRepository):
-    async def list(self, page: int = 1, page_size: int = 25,
+    async def list(self, user_id: str, page: int = 1, page_size: int = 25,
                    status: Optional[str] = None,
                    profile_type: Optional[str] = None) -> Tuple[List[Profile], int]:
-        query = select(Profile)
+        query = select(Profile).where(Profile.user_id == user_id)
         if status:
             query = query.where(Profile.status == status)
         if profile_type:
@@ -32,12 +45,17 @@ class ProfileRepository(BaseRepository):
         result = await self.session.execute(query)
         return list(result.scalars().all()), total
 
-    async def get_by_id(self, profile_id: str) -> Optional[Profile]:
-        result = await self.session.execute(select(Profile).where(Profile.id == profile_id))
+    async def get_by_id(self, profile_id: str, user_id: Optional[str] = None) -> Optional[Profile]:
+        query = select(Profile).where(Profile.id == profile_id)
+        if user_id:
+            query = query.where(Profile.user_id == user_id)
+        result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_by_slug(self, slug: str) -> Optional[Profile]:
-        result = await self.session.execute(select(Profile).where(Profile.slug == slug))
+    async def get_by_slug(self, slug: str, user_id: str) -> Optional[Profile]:
+        result = await self.session.execute(
+            select(Profile).where(Profile.slug == slug, Profile.user_id == user_id)
+        )
         return result.scalar_one_or_none()
 
     async def create(self, data: dict) -> Profile:
@@ -47,8 +65,8 @@ class ProfileRepository(BaseRepository):
         await self.session.refresh(profile)
         return profile
 
-    async def update(self, profile_id: str, data: dict) -> Optional[Profile]:
-        profile = await self.get_by_id(profile_id)
+    async def update(self, profile_id: str, user_id: str, data: dict) -> Optional[Profile]:
+        profile = await self.get_by_id(profile_id, user_id)
         if not profile:
             return None
         for key, value in data.items():
@@ -59,8 +77,8 @@ class ProfileRepository(BaseRepository):
         await self.session.refresh(profile)
         return profile
 
-    async def delete(self, profile_id: str) -> bool:
-        profile = await self.get_by_id(profile_id)
+    async def delete(self, profile_id: str, user_id: str) -> bool:
+        profile = await self.get_by_id(profile_id, user_id)
         if not profile:
             return False
         await self.session.delete(profile)
@@ -74,20 +92,27 @@ class ProfileRepository(BaseRepository):
 class SourceRepository(BaseRepository):
     async def list(self, page: int = 1, page_size: int = 25,
                    status: Optional[str] = None,
-                   profile_id: Optional[str] = None) -> Tuple[List[Source], int]:
+                   profile_id: Optional[str] = None,
+                   user_id: Optional[str] = None) -> Tuple[List[Source], int]:
         query = select(Source)
-        if status:
-            query = query.where(Source.status == status)
         if profile_id:
             query = query.where(Source.profile_id == profile_id)
+        if user_id:
+            # Scope sources to profiles owned by the user
+            query = query.join(Profile, Source.profile_id == Profile.id).where(Profile.user_id == user_id)
+        if status:
+            query = query.where(Source.status == status)
         total_q = select(func.count()).select_from(query.subquery())
         total = (await self.session.execute(total_q)).scalar() or 0
         query = query.order_by(Source.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
         result = await self.session.execute(query)
         return list(result.scalars().all()), total
 
-    async def get_by_id(self, source_id: str) -> Optional[Source]:
-        result = await self.session.execute(select(Source).where(Source.id == source_id))
+    async def get_by_id(self, source_id: str, user_id: Optional[str] = None) -> Optional[Source]:
+        query = select(Source).where(Source.id == source_id)
+        if user_id:
+            query = query.join(Profile, Source.profile_id == Profile.id).where(Profile.user_id == user_id)
+        result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
     async def create(self, data: dict) -> Source:
@@ -97,8 +122,8 @@ class SourceRepository(BaseRepository):
         await self.session.refresh(source)
         return source
 
-    async def update(self, source_id: str, data: dict) -> Optional[Source]:
-        source = await self.get_by_id(source_id)
+    async def update(self, source_id: str, data: dict, user_id: Optional[str] = None) -> Optional[Source]:
+        source = await self.get_by_id(source_id, user_id)
         if not source:
             return None
         for key, value in data.items():
@@ -118,7 +143,8 @@ class CandidateRepository(BaseRepository):
                    approval_status: Optional[str] = None,
                    profile_id: Optional[str] = None,
                    source_id: Optional[str] = None,
-                   min_score: Optional[float] = None) -> Tuple[List[Candidate], int]:
+                   min_score: Optional[float] = None,
+                   user_id: Optional[str] = None) -> Tuple[List[Candidate], int]:
         query = select(Candidate)
         if approval_status:
             query = query.where(Candidate.approval_status == approval_status)
@@ -128,14 +154,19 @@ class CandidateRepository(BaseRepository):
             query = query.where(Candidate.source_id == source_id)
         if min_score is not None:
             query = query.where(Candidate.overall_score >= min_score)
+        if user_id:
+            query = query.join(Profile, Candidate.profile_id == Profile.id).where(Profile.user_id == user_id)
         total_q = select(func.count()).select_from(query.subquery())
         total = (await self.session.execute(total_q)).scalar() or 0
         query = query.order_by(Candidate.overall_score.desc()).offset((page - 1) * page_size).limit(page_size)
         result = await self.session.execute(query)
         return list(result.scalars().all()), total
 
-    async def get_by_id(self, candidate_id: str) -> Optional[Candidate]:
-        result = await self.session.execute(select(Candidate).where(Candidate.id == candidate_id))
+    async def get_by_id(self, candidate_id: str, user_id: Optional[str] = None) -> Optional[Candidate]:
+        query = select(Candidate).where(Candidate.id == candidate_id)
+        if user_id:
+            query = query.join(Profile, Candidate.profile_id == Profile.id).where(Profile.user_id == user_id)
+        result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
     async def create(self, data: dict) -> Candidate:
@@ -145,8 +176,8 @@ class CandidateRepository(BaseRepository):
         await self.session.refresh(candidate)
         return candidate
 
-    async def update(self, candidate_id: str, data: dict) -> Optional[Candidate]:
-        candidate = await self.get_by_id(candidate_id)
+    async def update(self, candidate_id: str, data: dict, user_id: Optional[str] = None) -> Optional[Candidate]:
+        candidate = await self.get_by_id(candidate_id, user_id)
         if not candidate:
             return None
         for key, value in data.items():
@@ -165,7 +196,8 @@ class JobRepository(BaseRepository):
     async def list(self, page: int = 1, page_size: int = 25,
                    status: Optional[str] = None,
                    job_type: Optional[str] = None,
-                   profile_id: Optional[str] = None) -> Tuple[List[Job], int]:
+                   profile_id: Optional[str] = None,
+                   user_id: Optional[str] = None) -> Tuple[List[Job], int]:
         query = select(Job)
         if status:
             query = query.where(Job.status == status)
@@ -173,14 +205,19 @@ class JobRepository(BaseRepository):
             query = query.where(Job.job_type == job_type)
         if profile_id:
             query = query.where(Job.profile_id == profile_id)
+        if user_id:
+            query = query.join(Profile, Job.profile_id == Profile.id).where(Profile.user_id == user_id)
         total_q = select(func.count()).select_from(query.subquery())
         total = (await self.session.execute(total_q)).scalar() or 0
         query = query.order_by(Job.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
         result = await self.session.execute(query)
         return list(result.scalars().all()), total
 
-    async def get_by_id(self, job_id: str) -> Optional[Job]:
-        result = await self.session.execute(select(Job).where(Job.id == job_id))
+    async def get_by_id(self, job_id: str, user_id: Optional[str] = None) -> Optional[Job]:
+        query = select(Job).where(Job.id == job_id)
+        if user_id:
+            query = query.join(Profile, Job.profile_id == Profile.id).where(Profile.user_id == user_id)
+        result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
     async def create(self, data: dict) -> Job:
@@ -190,8 +227,8 @@ class JobRepository(BaseRepository):
         await self.session.refresh(job)
         return job
 
-    async def update(self, job_id: str, data: dict) -> Optional[Job]:
-        job = await self.get_by_id(job_id)
+    async def update(self, job_id: str, data: dict, user_id: Optional[str] = None) -> Optional[Job]:
+        job = await self.get_by_id(job_id, user_id)
         if not job:
             return None
         for key, value in data.items():
@@ -208,22 +245,26 @@ class JobRepository(BaseRepository):
 class NotificationRepository(BaseRepository):
     async def list(self, page: int = 1, page_size: int = 25,
                    unread_only: bool = False,
+                   user_id: Optional[str] = None,
                    profile_id: Optional[str] = None) -> Tuple[List[Notification], int]:
         query = select(Notification)
         if unread_only:
-            query = query.where(not Notification.is_read)
+            query = query.where(Notification.is_read == False)
         if profile_id:
             query = query.where(Notification.profile_id == profile_id)
+        if user_id:
+            query = query.where(Notification.user_id == user_id)
         total_q = select(func.count()).select_from(query.subquery())
         total = (await self.session.execute(total_q)).scalar() or 0
         query = query.order_by(Notification.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
         result = await self.session.execute(query)
         return list(result.scalars().all()), total
 
-    async def mark_read(self, notification_id: str) -> bool:
-        result = await self.session.execute(
-            update(Notification).where(Notification.id == notification_id).values(is_read=True)
-        )
+    async def mark_read(self, notification_id: str, user_id: Optional[str] = None) -> bool:
+        query = update(Notification).where(Notification.id == notification_id)
+        if user_id:
+            query = query.where(Notification.user_id == user_id)
+        result = await self.session.execute(query.values(is_read=True))
         await self.session.commit()
         return result.rowcount > 0
 
@@ -252,13 +293,27 @@ class SettingsRepository(BaseRepository):
         await self.session.refresh(setting)
         return setting
 
-    async def get_profile_settings(self, profile_id: str) -> List[ProfileSetting]:
+    async def get_profile_settings(self, profile_id: str, user_id: Optional[str] = None) -> List[ProfileSetting]:
+        # Verify profile belongs to user if user_id provided
+        if user_id:
+            result = await self.session.execute(
+                select(Profile).where(Profile.id == profile_id, Profile.user_id == user_id)
+            )
+            if not result.scalar_one_or_none():
+                return []
         result = await self.session.execute(
             select(ProfileSetting).where(ProfileSetting.profile_id == profile_id)
         )
         return list(result.scalars().all())
 
-    async def set_profile_setting(self, profile_id: str, key: str, value: str) -> ProfileSetting:
+    async def set_profile_setting(self, profile_id: str, key: str, value: str, user_id: Optional[str] = None) -> Optional[ProfileSetting]:
+        # Verify profile belongs to user if user_id provided
+        if user_id:
+            result = await self.session.execute(
+                select(Profile).where(Profile.id == profile_id, Profile.user_id == user_id)
+            )
+            if not result.scalar_one_or_none():
+                return None
         result = await self.session.execute(
             select(ProfileSetting).where(
                 ProfileSetting.profile_id == profile_id,

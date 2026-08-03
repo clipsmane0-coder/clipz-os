@@ -20,13 +20,33 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, nullable=False, index=True)
     display_name = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     role = Column(String, nullable=False, default="owner")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+    profiles = relationship("Profile", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+
+
+# ============================================================
+# SESSIONS
+# ============================================================
+class Session(Base):
+    __tablename__ = "sessions"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token = Column(String, unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utcnow)
+
+    user = relationship("User", back_populates="sessions")
 
 
 # ============================================================
@@ -36,8 +56,9 @@ class Profile(Base):
     __tablename__ = "profiles"
 
     id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String, nullable=False)
-    slug = Column(String, unique=True, nullable=False)
+    slug = Column(String, nullable=False)
     profile_type = Column(String, nullable=False, default="general")
     description = Column(Text, default="")
     avatar_path = Column(String, nullable=True)
@@ -50,6 +71,7 @@ class Profile(Base):
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
+    user = relationship("User", back_populates="profiles")
     platforms = relationship("ProfilePlatform", back_populates="profile", cascade="all, delete-orphan")
     profile_sources = relationship("ProfileSource", back_populates="profile", cascade="all, delete-orphan")
     sources = relationship("Source", back_populates="profile", cascade="all, delete-orphan")
@@ -62,7 +84,7 @@ class ProfilePlatform(Base):
     __tablename__ = "profile_platforms"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    profile_id = Column(String, ForeignKey("profiles.id"), nullable=False)
+    profile_id = Column(String, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
     platform = Column(String, nullable=False)
     handle = Column(String, default="")
     account_id = Column(String, nullable=True)
@@ -81,7 +103,7 @@ class ProfileSource(Base):
     __tablename__ = "profile_sources"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    profile_id = Column(String, ForeignKey("profiles.id"), nullable=False)
+    profile_id = Column(String, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
     source_type = Column(String, nullable=False)
     source_url = Column(String, nullable=True)
     source_name = Column(String, nullable=False)
@@ -101,7 +123,7 @@ class Source(Base):
     __tablename__ = "sources"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    profile_id = Column(String, ForeignKey("profiles.id"), nullable=False)
+    profile_id = Column(String, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True)
     title = Column(String, nullable=False)
     source_type = Column(String, nullable=False, default="upload")
     source_kind = Column(String, default="video")
@@ -151,9 +173,9 @@ class Candidate(Base):
     __tablename__ = "candidates"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    source_id = Column(String, ForeignKey("sources.id"), nullable=False)
+    source_id = Column(String, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False)
     analysis_run_id = Column(String, nullable=True)
-    profile_id = Column(String, ForeignKey("profiles.id"), nullable=False)
+    profile_id = Column(String, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True)
     start_ms = Column(Integer, default=0)
     end_ms = Column(Integer, default=0)
     duration_ms = Column(Integer, default=0)
@@ -182,7 +204,7 @@ class CandidateScore(Base):
     __tablename__ = "candidate_scores"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    candidate_id = Column(String, ForeignKey("candidates.id"), nullable=False)
+    candidate_id = Column(String, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
     signal_name = Column(String, nullable=False)
     raw_value = Column(Float, default=0.0)
     normalized_value = Column(Float, default=0.0)
@@ -204,7 +226,7 @@ class Job(Base):
     job_type = Column(String, nullable=False)
     entity_type = Column(String, nullable=False)
     entity_id = Column(String, nullable=False)
-    profile_id = Column(String, ForeignKey("profiles.id"), nullable=True)
+    profile_id = Column(String, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True)
     priority = Column(String, default="normal")
     status = Column(String, nullable=False, default="pending")
     progress_percent = Column(Integer, default=0)
@@ -232,7 +254,8 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    profile_id = Column(String, ForeignKey("profiles.id"), nullable=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    profile_id = Column(String, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True)
     type = Column(String, nullable=False, default="informational")
     title = Column(String, nullable=False)
     message = Column(Text, default="")
@@ -241,6 +264,7 @@ class Notification(Base):
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=utcnow)
 
+    user = relationship("User", back_populates="notifications")
     profile = relationship("Profile", back_populates="notifications")
 
 
@@ -262,7 +286,7 @@ class ProfileSetting(Base):
     __tablename__ = "profile_settings"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    profile_id = Column(String, ForeignKey("profiles.id"), nullable=False)
+    profile_id = Column(String, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
     key = Column(String, nullable=False)
     value = Column(String, nullable=False, default="")
     value_type = Column(String, default="string")
