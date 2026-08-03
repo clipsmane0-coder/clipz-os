@@ -26,8 +26,9 @@ DEMO_DISPLAY_NAME = "Demo Account"
 
 
 def iso(offset_days=0, offset_hours=0):
+    """Return offset-naive UTC datetime for seed data."""
     d = datetime.now(timezone.utc) + timedelta(days=offset_days, hours=offset_hours)
-    return d
+    return d.replace(tzinfo=None)
 
 
 async def seed():
