@@ -24,4 +24,5 @@ def generate_session_token() -> str:
 
 
 def session_expiry(days: int = 30) -> datetime:
-    return datetime.now(timezone.utc) + timedelta(days=days)
+    """Return offset-naive UTC datetime for session expiry."""
+    return (datetime.now(timezone.utc) + timedelta(days=days)).replace(tzinfo=None)

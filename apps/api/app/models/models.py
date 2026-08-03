@@ -6,7 +6,8 @@ from app.db.session import Base
 
 
 def utcnow():
-    return datetime.now(timezone.utc)
+    """Return offset-naive UTC datetime for SQLAlchemy DateTime columns."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def gen_uuid():
