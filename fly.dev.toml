@@ -1,0 +1,34 @@
+# CLIPZ Development Environment — Fly.io Configuration
+# Auto-deployed on push to develop branch
+app = "clipz-api-dev"
+primary_region = "iad"
+
+[build]
+  dockerfile = "apps/api/Dockerfile"
+  build_target = ""
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  max_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "10s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/v1/health"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024
+
+[env]
+  ENVIRONMENT = "development"
+  APP_ENV = "development"
+  LOG_LEVEL = "DEBUG"
+  CORS_ORIGINS = "https://clipz-os.higgsfield.app,http://localhost:3000,http://localhost:5173,https://clipz-api-dev.fly.dev"
