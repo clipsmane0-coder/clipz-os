@@ -160,3 +160,11 @@ async def deployment_dashboard(request: Request):
 </body>
 </html>"""
     return HTMLResponse(content=html, status_code=200)
+
+
+@router.get("/seed", include_in_schema=False)
+async def run_seed():
+    """Run the development seed. Call once to populate demo data."""
+    from app.utilities.seed import seed
+    await seed()
+    return {"success": True, "message": "Seed completed"}
