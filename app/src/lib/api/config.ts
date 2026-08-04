@@ -11,8 +11,8 @@
 
 export type ApiMode = "mock" | "real";
 
-const mode: ApiMode = (import.meta.env.VITE_API_MODE as ApiMode) || "mock";
-const baseUrl: string = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+const mode: ApiMode = "real";
+const baseUrl: string = "https://clipz-api-dev.fly.dev/api/v1";
 
 export const apiConfig = {
   mode,
