@@ -92,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       storeAuth(token, user);
       setState({ user, token, isLoading: false, isAuthenticated: true });
     } catch (err) {
+      console.error("[auth] signIn error:", err);
       setState((s) => ({ ...s, isLoading: false }));
       throw err;
     }
@@ -105,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       storeAuth(token, user);
       setState({ user, token, isLoading: false, isAuthenticated: true });
     } catch (err) {
+      console.error("[auth] signUp error:", err);
       setState((s) => ({ ...s, isLoading: false }));
       throw err;
     }

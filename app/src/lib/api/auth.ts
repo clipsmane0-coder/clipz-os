@@ -32,13 +32,20 @@ async function request<T>(method: string, path: string, body?: any, token?: stri
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    console.error("[auth] network error:", url, err);
+    throw { error: { message: `Network error: ${err instanceof Error ? err.message : "Failed to connect"}` } };
+  }
   const json = await res.json();
   if (!res.ok) {
+    console.error("[auth] request failed:", url, res.status, json);
     throw json;
   }
   return json as T;

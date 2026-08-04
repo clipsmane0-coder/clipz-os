@@ -132,7 +132,7 @@ function SignInPage() {
       await auth.signIn(email, password);
       await router.navigate({ to: "/" });
     } catch (err: any) {
-      setError(err?.error?.message || err?.detail?.error?.message || "Sign in failed. Please try again.");
+      setError(err?.error?.message || err?.detail?.error?.message || err?.message || JSON.stringify(err) || "Sign in failed. Please try again.");
     } finally {
       setLoading(false);
     }

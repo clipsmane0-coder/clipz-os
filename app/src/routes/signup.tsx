@@ -142,7 +142,7 @@ function SignUpPage() {
       await auth.signUp(email, password, name);
       await router.navigate({ to: "/" });
     } catch (err: any) {
-      setError(err?.error?.message || err?.detail?.error?.message || "Registration failed. Please try again.");
+      setError(err?.error?.message || err?.detail?.error?.message || err?.message || JSON.stringify(err) || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
