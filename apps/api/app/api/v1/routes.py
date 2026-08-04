@@ -18,7 +18,8 @@ from app.schemas.schemas import (
     ProfileResponse, SourceCreate, SourceUpdate, SourceRegisterUrl, SourceResponse,
     CandidateCreate, CandidateUpdate, CandidateResponse,
     JobCreate, JobResponse, NotificationResponse,
-    SettingsUpdate,
+    SettingsUpdate, DashboardOverview, ScheduleCreate, ScheduleUpdate,
+    ScheduleResponse, AnalyticsOverview,
 )
 from app.workflows.ingestion import SourceIngestionWorkflow, IngestionError
 from app.auth.dependencies import get_current_user
@@ -63,6 +64,70 @@ async def health_check(request: Request):
     service = HealthService()
     result = await service.check()
     return ApiResponse(data=result, meta=get_meta(request))
+
+
+# ============================================================
+# DASHBOARD (authenticated)
+# ============================================================
+@router.get("/dashboard/overview")
+async def dashboard_overview(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from sqlalchemy import select, func
+    from app.models.models import Profile, Source, Candidate, Job
+
+    # Count profiles
+    profile_count = await db.scalar(select(func.count(Profile.id)).where(Profile.user_id == current_user.id))
+    profile_count = profile_count or 0
+
+    # Get profile IDs for this user
+    profile_rows = await db.execute(select(Profile.id).where(Profile.user_id == current_user.id))
+    profile_ids = [row[0] for row in profile_rows]
+
+    source_count = 0
+    candidate_count = 0
+    job_count = 0
+    active_jobs = 0
+    completed_jobs = 0
+    failed_jobs = 0
+
+    if profile_ids:
+        source_count = await db.scalar(select(func.count(Source.id)).where(Source.profile_id.in_(profile_ids)))
+        source_count = source_count or 0
+
+        candidate_count = await db.scalar(select(func.count(Candidate.id)).where(Candidate.profile_id.in_(profile_ids)))
+        candidate_count = candidate_count or 0
+
+        job_count = await db.scalar(select(func.count(Job.id)).where(Job.profile_id.in_(profile_ids)))
+        job_count = job_count or 0
+
+        active_jobs = await db.scalar(select(func.count(Job.id)).where(Job.profile_id.in_(profile_ids), Job.status.in_(["pending", "running", "queued"])))
+        active_jobs = active_jobs or 0
+
+        completed_jobs = await db.scalar(select(func.count(Job.id)).where(Job.profile_id.in_(profile_ids), Job.status == "completed"))
+        completed_jobs = completed_jobs or 0
+
+        failed_jobs = await db.scalar(select(func.count(Job.id)).where(Job.profile_id.in_(profile_ids), Job.status == "failed"))
+        failed_jobs = failed_jobs or 0
+
+    return ApiResponse(
+        data=DashboardOverview(
+            total_profiles=profile_count,
+            total_sources=source_count,
+            total_candidates=candidate_count,
+            total_jobs=job_count,
+            active_jobs=active_jobs,
+            completed_jobs=completed_jobs,
+            failed_jobs=failed_jobs,
+            published_clips=0,
+            storage_used_bytes=0,
+            storage_capacity_bytes=1073741824,
+            system_health="healthy",
+        ),
+        meta=get_meta(request),
+    )
 
 
 # ============================================================
@@ -470,3 +535,80 @@ async def reinspect_source(
     workflow = SourceIngestionWorkflow(db)
     result = await workflow.run_reinspection(source_id)
     return ApiResponse(data=result, meta=get_meta(request))
+
+
+# ============================================================
+# ANALYTICS (authenticated)
+# ============================================================
+@router.get("/analytics/overview")
+async def analytics_overview(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from sqlalchemy import select, func
+    from app.models.models import Profile, Candidate
+
+    profile_count = await db.scalar(select(func.count(Profile.id)).where(Profile.user_id == current_user.id))
+    profile_count = profile_count or 0
+
+    profile_rows = await db.execute(select(Profile.id).where(Profile.user_id == current_user.id))
+    profile_ids = [row[0] for row in profile_rows]
+
+    candidate_count = 0
+    if profile_ids:
+        candidate_count = await db.scalar(select(func.count(Candidate.id)).where(Candidate.profile_id.in_(profile_ids)))
+        candidate_count = candidate_count or 0
+
+    return ApiResponse(
+        data=AnalyticsOverview(
+            total_clips=candidate_count,
+            total_published=0,
+            total_views=0,
+            total_engagement=0,
+            avg_views_per_clip=0.0,
+            top_platform="tiktok",
+            growth_rate=0.0,
+        ),
+        meta=get_meta(request),
+    )
+
+
+# ============================================================
+# SCHEDULES (authenticated)
+# ============================================================
+@router.get("/schedules")
+async def list_schedules(
+    request: Request,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    status: Optional[str] = None,
+    profile_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    conditions = []
+    if status:
+        conditions.append("status = :status")
+    if profile_id:
+        validate_uuid(profile_id, "profile_id")
+        conditions.append("profile_id = :profile_id")
+    where = " AND ".join(conditions) if conditions else "1=1"
+    params = {"status": status, "profile_id": profile_id}
+
+    # Schedules don't have a dedicated table yet — return empty
+    return ApiResponse(
+        data=[],
+        meta=PaginatedMeta(page=page, page_size=page_size, total=0,
+                           request_id=getattr(request.state, "request_id", str(uuid.uuid4()))),
+    )
+
+
+@router.post("/schedules")
+async def create_schedule(
+    request: Request,
+    body: ScheduleCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    error("NOT_IMPLEMENTED", "Schedule creation is not yet implemented.", status_code=501)

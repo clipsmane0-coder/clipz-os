@@ -303,3 +303,62 @@ class ProfileSettingsResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ============================================================
+# DASHBOARD
+# ============================================================
+class DashboardOverview(BaseModel):
+    total_profiles: int = 0
+    total_sources: int = 0
+    total_candidates: int = 0
+    total_jobs: int = 0
+    active_jobs: int = 0
+    completed_jobs: int = 0
+    failed_jobs: int = 0
+    published_clips: int = 0
+    storage_used_bytes: int = 0
+    storage_capacity_bytes: int = 0
+    system_health: str = "healthy"
+
+
+# ============================================================
+# SCHEDULES
+# ============================================================
+class ScheduleCreate(BaseModel):
+    profile_id: str
+    platform: str
+    scheduled_at: str
+    candidate_id: Optional[str] = None
+    status: str = "draft"
+
+
+class ScheduleUpdate(BaseModel):
+    status: Optional[str] = None
+    scheduled_at: Optional[str] = None
+
+
+class ScheduleResponse(BaseModel):
+    id: str
+    profile_id: str
+    platform: str
+    scheduled_at: str
+    candidate_id: Optional[str] = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# ANALYTICS
+# ============================================================
+class AnalyticsOverview(BaseModel):
+    total_clips: int = 0
+    total_published: int = 0
+    total_views: int = 0
+    total_engagement: int = 0
+    avg_views_per_clip: float = 0.0
+    top_platform: str = "tiktok"
+    growth_rate: float = 0.0

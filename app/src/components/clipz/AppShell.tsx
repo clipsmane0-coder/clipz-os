@@ -121,8 +121,8 @@ export function AppShell({ children, title, subtitle, rightSlot }: AppShellProps
     setSearchQuery("");
   };
 
-  const healthOk = healthData?.api && healthData?.database && healthData?.worker;
-  const allHealthy = healthData && Object.values(healthData).filter((v) => typeof v === "boolean").every(Boolean);
+  const healthOk = Boolean(healthData?.api && healthData?.database);
+  const allHealthy = !healthOk ? false : true;
 
   return (
     <div className="flex min-h-dvh bg-clipz-bg text-clipz-text">

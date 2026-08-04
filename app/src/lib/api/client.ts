@@ -21,8 +21,8 @@ const unsupportedFn = unsupported;
 // === HEALTH ===
 export const getHealth = impl.getHealth;
 
-// === DASHBOARD (unsupported in real mode) ===
-export const getDashboardOverview = apiConfig.isReal ? unsupportedFn("getDashboardOverview") : mock.getDashboardOverview;
+// === DASHBOARD ===
+export const getDashboardOverview = impl.getDashboardOverview;
 
 // === PROFILES ===
 export const listProfiles = impl.listProfiles;
@@ -67,19 +67,20 @@ export const cancelJob = impl.cancelJob;
 export const pauseJob = impl.pauseJob;
 export const resumeJob = impl.resumeJob;
 
-// === RENDERS (unsupported in real mode) ===
-export const listRenders = apiConfig.isReal ? unsupportedFn("listRenders") : mock.listRenders;
+// === RENDERS ===
+export const listRenders = impl.listRenders;
 
-// === SCHEDULES (unsupported in real mode) ===
-export const listSchedules = apiConfig.isReal ? unsupportedFn("listSchedules") : mock.listSchedules;
-export const getSchedule = apiConfig.isReal ? unsupportedFn("getSchedule") : mock.getSchedule;
+// === SCHEDULES ===
+export const listSchedules = impl.listSchedules;
+export const getSchedule = impl.getSchedule;
+export const createSchedule = impl.createSchedule;
 
-// === ANALYTICS (unsupported in real mode) ===
-export const getAnalyticsOverview = apiConfig.isReal ? unsupportedFn("getAnalyticsOverview") : mock.getAnalyticsOverview;
-export const getAnalyticsTimeseries = apiConfig.isReal ? unsupportedFn("getAnalyticsTimeseries") : mock.getAnalyticsTimeseries;
-export const getHookTypeStats = apiConfig.isReal ? unsupportedFn("getHookTypeStats") : mock.getHookTypeStats;
-export const getClipLengthStats = apiConfig.isReal ? unsupportedFn("getClipLengthStats") : mock.getClipLengthStats;
-export const getProfilePerformance = apiConfig.isReal ? unsupportedFn("getProfilePerformance") : mock.getProfilePerformance;
+// === ANALYTICS ===
+export const getAnalyticsOverview = impl.getAnalyticsOverview;
+export const getAnalyticsTimeseries = impl.getAnalyticsTimeseries;
+export const getHookTypeStats = impl.getHookTypeStats;
+export const getClipLengthStats = impl.getClipLengthStats;
+export const getProfilePerformance = impl.getProfilePerformance;
 
 // === PRESETS (unsupported in real mode) ===
 export const getBrandingPresets = apiConfig.isReal ? unsupportedFn("getBrandingPresets") : mock.getBrandingPresets;

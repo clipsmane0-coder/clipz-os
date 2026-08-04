@@ -186,3 +186,48 @@ export async function registerSourceUrl(profileId: string, sourceUrl: string, ti
     rights_status: rightsStatus || "unknown",
   });
 }
+
+// === DASHBOARD ===
+export function getDashboardOverview() {
+  return request<any>("GET", "/dashboard/overview");
+}
+
+// === ANALYTICS ===
+export function getAnalyticsOverview() {
+  return request<any>("GET", "/analytics/overview");
+}
+
+// === SCHEDULES ===
+export function listSchedules(p: Record<string, any> = {}) {
+  return request<any>("GET", `/schedules${params(p)}`);
+}
+
+export function getSchedule(id: string) {
+  return request<any>("GET", `/schedules/${id}`);
+}
+
+export function createSchedule(data: any) {
+  return request<any>("POST", "/schedules", data);
+}
+
+// === RENDERS ===
+export function listRenders(p: Record<string, any> = {}) {
+  return request<any>("GET", `/renders${params(p)}`);
+}
+
+// === ANALYTICS ===
+export function getAnalyticsTimeseries(p: Record<string, any> = {}) {
+  return request<any>("GET", `/analytics/timeseries${params(p)}`);
+}
+
+export function getHookTypeStats() {
+  return request<any>("GET", "/analytics/hook-type-stats");
+}
+
+export function getClipLengthStats() {
+  return request<any>("GET", "/analytics/clip-length-stats");
+}
+
+export function getProfilePerformance(p: Record<string, any> = {}) {
+  return request<any>("GET", `/analytics/profile-performance${params(p)}`);
+}

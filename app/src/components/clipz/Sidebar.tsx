@@ -15,46 +15,47 @@ import {
   Zap,
   ChevronRight,
 } from "lucide-react";
-import { useProfiles } from "../../lib/api/hooks";
-
-interface NavItem {
-  to: string;
-  label: string;
-  icon: React.ReactNode;
-  badge?: string | number;
-}
-
-const navSections: { title: string; items: NavItem[] }[] = [
-  {
-    title: "Workspace",
-    items: [
-      { to: "/dashboard", label: "Dashboard", icon: <Gauge size={18} /> },
-      { to: "/profiles", label: "Profiles", icon: <Users size={18} />, badge: 6 },
-      { to: "/sources", label: "Sources", icon: <Video size={18} />, badge: 10 },
-      { to: "/clip-lab", label: "Clip Lab", icon: <Scissors size={18} />, badge: 32 },
-      { to: "/queue", label: "Queue", icon: <ListChecks size={18} />, badge: 7 },
-      { to: "/library", label: "Library", icon: <Library size={18} /> },
-    ],
-  },
-  {
-    title: "Distribution",
-    items: [
-      { to: "/calendar", label: "Calendar", icon: <Calendar size={18} />, badge: 28 },
-      { to: "/analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
-    ],
-  },
-  {
-    title: "System",
-    items: [
-      { to: "/settings", label: "Settings", icon: <Settings size={18} /> },
-    ],
-  },
-];
+import { useProfiles, useSourceList, useJobList } from "../../lib/api/hooks";
+import { useAuth } from "../../lib/auth/auth-context";
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth();
   const { data: profilesData } = useProfiles({ pageSize: 50 });
+  const { data: sourcesData } = useSourceList({ pageSize: 1 });
+  const { data: jobsData } = useJobList({ pageSize: 1 });
+
   const profiles = profilesData?.data || [];
   const activeProfiles = profiles.filter((p) => p.status === "active");
+  const profileCount = profilesData?.meta?.total ?? profiles.length;
+  const sourceCount = sourcesData?.meta?.total ?? 0;
+  const jobCount = jobsData?.meta?.total ?? 0;
+
+  const navSections: { title: string; items: { to: string; label: string; icon: React.ReactNode; badge?: string | number }[] }[] = [
+    {
+      title: "Workspace",
+      items: [
+        { to: "/dashboard", label: "Dashboard", icon: <Gauge size={18} /> },
+        { to: "/profiles", label: "Profiles", icon: <Users size={18} />, badge: profileCount || undefined },
+        { to: "/sources", label: "Sources", icon: <Video size={18} />, badge: sourceCount || undefined },
+        { to: "/clip-lab", label: "Clip Lab", icon: <Scissors size={18} /> },
+        { to: "/queue", label: "Queue", icon: <ListChecks size={18} />, badge: jobCount || undefined },
+        { to: "/library", label: "Library", icon: <Library size={18} /> },
+      ],
+    },
+    {
+      title: "Distribution",
+      items: [
+        { to: "/calendar", label: "Calendar", icon: <Calendar size={18} /> },
+        { to: "/analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
+      ],
+    },
+    {
+      title: "System",
+      items: [
+        { to: "/settings", label: "Settings", icon: <Settings size={18} /> },
+      ],
+    },
+  ];
 
   return (
     <aside className="flex h-full w-[240px] shrink-0 flex-col border-r border-clipz-border bg-clipz-panel">
@@ -107,40 +108,48 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             Active Profiles
           </div>
           <div className="space-y-0.5">
-            {activeProfiles.slice(0, 4).map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-clipz-surface cursor-pointer group"
-              >
-                <div className="relative h-5 w-5 shrink-0 rounded-full bg-clipz-elevated overflow-hidden">
-                  <img
-                    src={p.avatarPath || ""}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-clipz-green ring-2 ring-clipz-panel" />
+            {activeProfiles.length === 0 ? (
+              <p className="px-2 text-[11px] text-clipz-text-dim">No profiles yet</p>
+            ) : (
+              activeProfiles.slice(0, 4).map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-clipz-surface cursor-pointer group"
+                >
+                  <div className="relative h-5 w-5 shrink-0 rounded-full bg-clipz-elevated overflow-hidden">
+                    <img
+                      src={p.avatarPath || p.image || ""}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-clipz-green ring-2 ring-clipz-panel" />
+                  </div>
+                  <span className="flex-1 truncate text-[12px] text-clipz-text-muted group-hover:text-white">
+                    {p.name}
+                  </span>
+                  <ChevronRight size={12} className="text-clipz-text-dim opacity-0 group-hover:opacity-100" />
                 </div>
-                <span className="flex-1 truncate text-[12px] text-clipz-text-muted group-hover:text-white">
-                  {p.name}
-                </span>
-                <ChevronRight size={12} className="text-clipz-text-dim opacity-0 group-hover:opacity-100" />
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
 
       {/* Bottom: upload + user */}
       <div className="border-t border-clipz-border-soft p-3 space-y-2">
-        <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-clipz-accent px-3 py-2 text-[12px] font-medium text-white transition-all hover:bg-clipz-accent/90 glow-accent">
+        <Link
+          to="/sources"
+          onClick={onNavigate}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-clipz-accent px-3 py-2 text-[12px] font-medium text-white transition-all hover:bg-clipz-accent/90 glow-accent"
+        >
           <UploadCloud size={14} />
           New Source
-        </button>
+        </Link>
         <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-clipz-surface cursor-pointer">
           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium text-white truncate">Operator</div>
-            <div className="text-[10px] text-clipz-text-dim truncate">admin@clipz.io</div>
+            <div className="text-[12px] font-medium text-white truncate">{user?.display_name || "User"}</div>
+            <div className="text-[10px] text-clipz-text-dim truncate">{user?.email || ""}</div>
           </div>
         </div>
       </div>
