@@ -1,10 +1,38 @@
-import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth/auth-context";
 
 export const Route = createFileRoute("/signin")({
   component: SignInPage,
 });
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+            cancel_on_tap_outside?: boolean;
+          }) => void;
+          renderButton: (
+            element: HTMLElement,
+            options: {
+              theme?: "outline" | "filled_blue" | "filled_black";
+              size?: "large" | "medium" | "small";
+              text?: "signin_with" | "signup_with" | "continue_with";
+              shape?: "rectangular" | "pill" | "square" | "circle";
+              logo_alignment?: "left" | "center";
+              width?: string;
+            }
+          ) => void;
+          prompt: (momentListener?: (moment: { type: string }) => void) => void;
+        };
+      };
+    };
+  }
+}
 
 function SignInPage() {
   const auth = useAuth();
@@ -13,11 +41,88 @@ function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const [googleClientId] = useState(() => {
+    // Expose the Google Client ID as a build-time env var
+    return (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "";
+  });
 
   if (auth.isAuthenticated) {
     router.navigate({ to: "/" });
     return null;
   }
+
+  // Load Google Identity Services and render the button
+  useEffect(() => {
+    if (!googleClientId || !googleBtnRef.current) return;
+
+    // Check if already loaded
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          try {
+            setLoading(true);
+            await auth.signInWithGoogle(response.credential);
+            await router.navigate({ to: "/" });
+          } catch (err: any) {
+            setError(err?.error?.message || "Google sign-in failed.");
+          } finally {
+            setLoading(false);
+          }
+        },
+        cancel_on_tap_outside: false,
+      });
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: "outline",
+        size: "large",
+        text: "signin_with",
+        shape: "rectangular",
+        width: "320",
+      });
+      return;
+    }
+
+    // Load the GIS script
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (response) => {
+            try {
+              setLoading(true);
+              await auth.signInWithGoogle(response.credential);
+              await router.navigate({ to: "/" });
+            } catch (err: any) {
+              setError(err?.error?.message || "Google sign-in failed.");
+            } finally {
+              setLoading(false);
+            }
+          },
+          cancel_on_tap_outside: false,
+        });
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "outline",
+          size: "large",
+          text: "signin_with",
+          shape: "rectangular",
+          width: "320",
+        });
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup script on unmount (optional, but prevents duplicates)
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, [googleClientId, auth, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +184,21 @@ function SignInPage() {
           >
             {loading ? "Signing in..." : "Sign in"}
           </button>
+
+          {googleClientId && (
+            <>
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-q-border-primary" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-q-background-primary px-2 text-q-text-tertiary">or continue with</span>
+                </div>
+              </div>
+
+              <div className="flex justify-center" ref={googleBtnRef} />
+            </>
+          )}
 
           <p className="text-center text-sm text-q-text-secondary">
             Don't have an account?{" "}

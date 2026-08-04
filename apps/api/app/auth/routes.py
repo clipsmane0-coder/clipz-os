@@ -1,6 +1,7 @@
-"""Auth routes: register, login, logout, me."""
+"""Auth routes: register, login, logout, me, Google OAuth."""
 
 import uuid
+import logging
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,9 @@ from app.models.models import User, Session
 from app.auth.auth import hash_password, verify_password, generate_session_token, session_expiry
 from app.auth.dependencies import get_current_user
 from app.schemas.schemas import ApiMeta, ApiResponse, ApiError, ApiErrorResponse
+from app.core.config import settings
+
+logger = logging.getLogger("clipz")
 
 router = APIRouter(prefix="/api/v1/auth")
 
@@ -51,6 +55,104 @@ class LoginResponse(BaseModel):
 
 class MeResponse(BaseModel):
     user: AuthUserResponse
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+
+# ============================================================
+# GOOGLE OAUTH
+# ============================================================
+@router.post("/google")
+async def google_auth(request: Request, body: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+    """Authenticate with a Google credential (ID token) from the frontend."""
+    import google.auth.transport.requests
+    from google.oauth2 import id_token
+
+    if not settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=ApiErrorResponse(
+                error=ApiError(code="GOOGLE_OAUTH_NOT_CONFIGURED", message="Google OAuth is not configured on this server.", details={}, retryable=False),
+                meta=get_meta(request),
+            ).model_dump(),
+        )
+
+    try:
+        # Verify the Google ID token
+        id_info = id_token.verify_oauth2_token(
+            body.credential,
+            google.auth.transport.requests.Request(),
+            settings.google_client_id,
+            clock_skew_in_seconds=300,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=ApiErrorResponse(
+                error=ApiError(code="INVALID_GOOGLE_TOKEN", message=f"Google token verification failed: {e}", details={}, retryable=False),
+                meta=get_meta(request),
+            ).model_dump(),
+        )
+
+    google_email = id_info.get("email", "")
+    google_name = id_info.get("name", "")
+    google_sub = id_info.get("sub", "")
+    google_picture = id_info.get("picture", "")
+
+    if not google_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ApiErrorResponse(
+                error=ApiError(code="GOOGLE_NO_EMAIL", message="Google account has no email address.", details={}, retryable=False),
+                meta=get_meta(request),
+            ).model_dump(),
+        )
+
+    # Check if user exists by email
+    result = await db.execute(select(User).where(User.email == google_email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        # Create a new user
+        import secrets
+        random_password = secrets.token_urlsafe(32)
+        user = User(
+            id=str(uuid.uuid4()),
+            email=google_email,
+            display_name=google_name or google_email.split("@")[0],
+            password_hash=hash_password(random_password),
+            role="owner",
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()
+        logger.info(f"Created new user via Google OAuth: {google_email}")
+
+    # Create session
+    token = generate_session_token()
+    session = Session(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        token=token,
+        expires_at=session_expiry(),
+        is_active=True,
+    )
+    db.add(session)
+    await db.commit()
+
+    return ApiResponse(
+        data=LoginResponse(
+            token=token,
+            user=AuthUserResponse(
+                id=user.id, email=user.email, display_name=user.display_name,
+                role=user.role, is_active=user.is_active,
+                created_at=user.created_at.isoformat(),
+            ),
+        ),
+        meta=get_meta(request),
+    )
 
 
 # ============================================================

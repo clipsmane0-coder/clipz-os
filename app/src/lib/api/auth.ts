@@ -66,3 +66,9 @@ export function logout(token: string) {
 export function getMe(token: string) {
   return request<ApiEnvelope<AuthUser>>("GET", "/auth/me", undefined, token);
 }
+
+export function googleAuth(credential: string) {
+  return request<ApiEnvelope<LoginResponse>>("POST", "/auth/google", {
+    credential,
+  });
+}

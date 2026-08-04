@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
     log_level: str = "INFO"
     max_upload_size_mb: int = 4096
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    frontend_url: str = "http://localhost:5173"
 
     @property
     def cors_origin_list(self) -> List[str]:
