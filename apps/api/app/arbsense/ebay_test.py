@@ -140,20 +140,23 @@ async def test_all_endpoints() -> dict:
     except Exception as e:
         results["shopping_api"] = {"error": str(e)}
 
-    # 4. Trading API (SOAP/XML) - test multiple calls
+    # 4. Trading API (SOAP/XML) - test various calls
     try:
-        # Test 1: GeteBayOfficialTime (simplest auth test)
+        # Test 1: GetCategories (very basic public call)
         async with httpx.AsyncClient(timeout=15.0) as client:
-            xml_body = f"""<?xml version="1.0" encoding="utf-8"?>
-<GeteBayOfficialTimeRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+            xml_body = """<?xml version="1.0" encoding="utf-8"?>
+<GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
-    <eBayAuthToken>{EBAY_AUTH_TOKEN}</eBayAuthToken>
+    <eBayAuthToken>""" + EBAY_AUTH_TOKEN + """</eBayAuthToken>
   </RequesterCredentials>
-</GeteBayOfficialTimeRequest>"""
+  <CategorySiteID>0</CategorySiteID>
+  <DetailLevel>ReturnSummary</DetailLevel>
+  <LevelLimit>1</LevelLimit>
+</GetCategoriesRequest>"""
             r = await client.post(
                 "https://api.ebay.com/ws/api.dll",
                 headers={
-                    "X-EBAY-API-CALL-NAME": "GeteBayOfficialTime",
+                    "X-EBAY-API-CALL-NAME": "GetCategories",
                     "X-EBAY-API-SITEID": "0",
                     "X-EBAY-API-COMPATIBILITY-LEVEL": "967",
                     "X-EBAY-API-APP-ID": EBAY_APP_ID,
@@ -163,29 +166,25 @@ async def test_all_endpoints() -> dict:
                 },
                 content=xml_body,
             )
-            results["trading_gettime"] = {
+            results["trading_getcategories"] = {
                 "status": r.status_code,
                 "body_len": len(r.text),
-                "body_preview": r.text[:500],
+                "body_preview": r.text[:600],
             }
 
-        # Test 2: GetSearchResults
+        # Test 2: GetItem with a known item ID
         async with httpx.AsyncClient(timeout=15.0) as client:
-            xml_body = f"""<?xml version="1.0" encoding="utf-8"?>
-<GetSearchResultsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+            xml_body = """<?xml version="1.0" encoding="utf-8"?>
+<GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
-    <eBayAuthToken>{EBAY_AUTH_TOKEN}</eBayAuthToken>
+    <eBayAuthToken>""" + EBAY_AUTH_TOKEN + """</eBayAuthToken>
   </RequesterCredentials>
-  <Query>kirkland vitamin d3</Query>
-  <Pagination>
-    <EntriesPerPage>2</EntriesPerPage>
-    <PageNumber>1</PageNumber>
-  </Pagination>
-</GetSearchResultsRequest>"""
+  <ItemID>115936073280</ItemID>
+</GetItemRequest>"""
             r = await client.post(
                 "https://api.ebay.com/ws/api.dll",
                 headers={
-                    "X-EBAY-API-CALL-NAME": "GetSearchResults",
+                    "X-EBAY-API-CALL-NAME": "GetItem",
                     "X-EBAY-API-SITEID": "0",
                     "X-EBAY-API-COMPATIBILITY-LEVEL": "967",
                     "X-EBAY-API-APP-ID": EBAY_APP_ID,
@@ -195,10 +194,70 @@ async def test_all_endpoints() -> dict:
                 },
                 content=xml_body,
             )
-            results["trading_search"] = {
+            results["trading_getitem"] = {
                 "status": r.status_code,
                 "body_len": len(r.text),
                 "body_preview": r.text[:800],
+            }
+
+        # Test 3: Finding API via POST (instead of GET)
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(
+                "https://svcs.ebay.com/services/search/FindingService/v1",
+                data={
+                    "OPERATION-NAME": "findItemsByKeywords",
+                    "SERVICE-VERSION": "1.13.0",
+                    "SECURITY-APPNAME": EBAY_APP_ID,
+                    "GLOBAL-ID": "EBAY_US",
+                    "keywords": "kirkland vitamin d3",
+                    "RESPONSE-DATA-FORMAT": "JSON",
+                    "paginationInput.entriesPerPage": "2",
+                },
+                headers={
+                    "X-EBAY-SOA-OPERATION-NAME": "findItemsByKeywords",
+                    "X-EBAY-SOA-SECURITY-APPNAME": EBAY_APP_ID,
+                    "X-EBAY-SOA-GLOBAL-ID": "EBAY_US",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            )
+            results["finding_api_post"] = {
+                "status": r.status_code,
+                "body_len": len(r.text),
+                "body_preview": r.text[:300],
+            }
+
+        # Test 4: Finding API with SOAP format
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            soap_body = f"""<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:ser="http://www.ebay.com/marketplace/search/v1/services">
+  <soapenv:Header>
+    <ser:RequesterCredentials>
+      <ser:eBayAuthToken>{EBAY_AUTH_TOKEN}</ser:eBayAuthToken>
+    </ser:RequesterCredentials>
+  </soapenv:Header>
+  <soapenv:Body>
+    <ser:findItemsByKeywordsRequest>
+      <ser:keywords>kirkland vitamin d3</ser:keywords>
+      <ser:paginationInput>
+        <ser:entriesPerPage>2</ser:entriesPerPage>
+      </ser:paginationInput>
+    </ser:findItemsByKeywordsRequest>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+            r = await client.post(
+                "https://svcs.ebay.com/services/search/FindingService/v1",
+                content=soap_body,
+                headers={
+                    "Content-Type": "text/xml;charset=UTF-8",
+                    "X-EBAY-SOA-OPERATION-NAME": "findItemsByKeywords",
+                    "X-EBAY-SOA-SECURITY-APPNAME": EBAY_APP_ID,
+                },
+            )
+            results["finding_api_soap"] = {
+                "status": r.status_code,
+                "body_len": len(r.text),
+                "body_preview": r.text[:300],
             }
     except Exception as e:
         results["trading_api"] = {"error": str(e)}
