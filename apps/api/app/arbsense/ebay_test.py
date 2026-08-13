@@ -119,7 +119,7 @@ async def test_all_endpoints() -> dict:
                 "https://api.ebay.com/ws/api.dll",
                 headers={
                     "X-EBAY-API-CALL-NAME": "GetSearchResults",
-                    "X-EBAY-API-SITE-ID": "0",
+                    "X-EBAY-API-SITEID": "0",
                     "X-EBAY-API-COMPATIBILITY-LEVEL": "967",
                     "X-EBAY-API-APP-ID": EBAY_APP_ID,
                     "Content-Type": "text/xml",
