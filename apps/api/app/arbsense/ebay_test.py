@@ -200,64 +200,92 @@ async def test_all_endpoints() -> dict:
                 "body_preview": r.text[:800],
             }
 
-        # Test 3: Finding API via POST (instead of GET)
+        # Test 3: GetCategoryListings (browse listings by category)
         async with httpx.AsyncClient(timeout=15.0) as client:
+            xml_body = """<?xml version="1.0" encoding="utf-8"?>
+<GetCategoryListingsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>""" + EBAY_AUTH_TOKEN + """</eBayAuthToken>
+  </RequesterCredentials>
+  <CategoryID>184634</CategoryID>
+  <MaxItems>3</MaxItems>
+</GetCategoryListingsRequest>"""
             r = await client.post(
-                "https://svcs.ebay.com/services/search/FindingService/v1",
-                data={
-                    "OPERATION-NAME": "findItemsByKeywords",
-                    "SERVICE-VERSION": "1.13.0",
-                    "SECURITY-APPNAME": EBAY_APP_ID,
-                    "GLOBAL-ID": "EBAY_US",
-                    "keywords": "kirkland vitamin d3",
-                    "RESPONSE-DATA-FORMAT": "JSON",
-                    "paginationInput.entriesPerPage": "2",
-                },
+                "https://api.ebay.com/ws/api.dll",
                 headers={
-                    "X-EBAY-SOA-OPERATION-NAME": "findItemsByKeywords",
-                    "X-EBAY-SOA-SECURITY-APPNAME": EBAY_APP_ID,
-                    "X-EBAY-SOA-GLOBAL-ID": "EBAY_US",
-                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-EBAY-API-CALL-NAME": "GetCategoryListings",
+                    "X-EBAY-API-SITEID": "0",
+                    "X-EBAY-API-COMPATIBILITY-LEVEL": "1193",
+                    "X-EBAY-API-APP-ID": EBAY_APP_ID,
+                    "X-EBAY-API-DEV-ID": EBAY_DEV_ID,
+                    "X-EBAY-API-CERT-ID": EBAY_CERT_ID,
+                    "Content-Type": "text/xml",
                 },
+                content=xml_body,
             )
-            results["finding_api_post"] = {
+            results["trading_category_listings"] = {
                 "status": r.status_code,
                 "body_len": len(r.text),
-                "body_preview": r.text[:300],
+                "body_preview": r.text[:800],
             }
 
-        # Test 4: Finding API with SOAP format
+        # Test 4: GetSearchResults (trading API search)
         async with httpx.AsyncClient(timeout=15.0) as client:
-            soap_body = f"""<?xml version="1.0" encoding="utf-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                  xmlns:ser="http://www.ebay.com/marketplace/search/v1/services">
-  <soapenv:Header>
-    <ser:RequesterCredentials>
-      <ser:eBayAuthToken>{EBAY_AUTH_TOKEN}</ser:eBayAuthToken>
-    </ser:RequesterCredentials>
-  </soapenv:Header>
-  <soapenv:Body>
-    <ser:findItemsByKeywordsRequest>
-      <ser:keywords>kirkland vitamin d3</ser:keywords>
-      <ser:paginationInput>
-        <ser:entriesPerPage>2</ser:entriesPerPage>
-      </ser:paginationInput>
-    </ser:findItemsByKeywordsRequest>
-  </soapenv:Body>
-</soapenv:Envelope>"""
+            xml_body = """<?xml version="1.0" encoding="utf-8"?>
+<GetSearchResultsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>""" + EBAY_AUTH_TOKEN + """</eBayAuthToken>
+  </RequesterCredentials>
+  <Query>kirkland vitamin d3</Query>
+  <MaxItems>3</MaxItems>
+  <DetailLevel>ItemReturnDescription</DetailLevel>
+  <PageNumber>1</PageNumber>
+</GetSearchResultsRequest>"""
             r = await client.post(
-                "https://svcs.ebay.com/services/search/FindingService/v1",
-                content=soap_body,
+                "https://api.ebay.com/ws/api.dll",
                 headers={
-                    "Content-Type": "text/xml;charset=UTF-8",
-                    "X-EBAY-SOA-OPERATION-NAME": "findItemsByKeywords",
-                    "X-EBAY-SOA-SECURITY-APPNAME": EBAY_APP_ID,
+                    "X-EBAY-API-CALL-NAME": "GetSearchResults",
+                    "X-EBAY-API-SITEID": "0",
+                    "X-EBAY-API-COMPATIBILITY-LEVEL": "1193",
+                    "X-EBAY-API-APP-ID": EBAY_APP_ID,
+                    "X-EBAY-API-DEV-ID": EBAY_DEV_ID,
+                    "X-EBAY-API-CERT-ID": EBAY_CERT_ID,
+                    "Content-Type": "text/xml",
                 },
+                content=xml_body,
             )
-            results["finding_api_soap"] = {
+            results["trading_search_results"] = {
                 "status": r.status_code,
                 "body_len": len(r.text),
-                "body_preview": r.text[:300],
+                "body_preview": r.text[:1000],
+            }
+
+        # Test 5: GetSuggestedCategories
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            xml_body = """<?xml version="1.0" encoding="utf-8"?>
+<GetSuggestedCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>""" + EBAY_AUTH_TOKEN + """</eBayAuthToken>
+  </RequesterCredentials>
+  <Query>kirkland vitamin d3</Query>
+</GetSuggestedCategoriesRequest>"""
+            r = await client.post(
+                "https://api.ebay.com/ws/api.dll",
+                headers={
+                    "X-EBAY-API-CALL-NAME": "GetSuggestedCategories",
+                    "X-EBAY-API-SITEID": "0",
+                    "X-EBAY-API-COMPATIBILITY-LEVEL": "1193",
+                    "X-EBAY-API-APP-ID": EBAY_APP_ID,
+                    "X-EBAY-API-DEV-ID": EBAY_DEV_ID,
+                    "X-EBAY-API-CERT-ID": EBAY_CERT_ID,
+                    "Content-Type": "text/xml",
+                },
+                content=xml_body,
+            )
+            results["trading_suggested_categories"] = {
+                "status": r.status_code,
+                "body_len": len(r.text),
+                "body_preview": r.text[:600],
             }
     except Exception as e:
         results["trading_api"] = {"error": str(e)}
