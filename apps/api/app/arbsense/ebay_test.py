@@ -37,46 +37,85 @@ async def test_all_endpoints() -> dict:
     except Exception as e:
         results["finding_api"] = {"error": str(e)}
 
-    # 2. Browse API with client credentials
+    # 2. Browse API with client credentials - multiple approaches
     try:
-        # First get OAuth token
-        auth = base64.b64encode(f"{EBAY_APP_ID}:{EBAY_CERT_ID}".encode()).decode()
+        # Approach A: Basic auth with URL-encoded credentials
+        from urllib.parse import quote_plus
+        encoded_id = quote_plus(EBAY_APP_ID)
+        encoded_secret = quote_plus(EBAY_CERT_ID)
+        auth2 = base64.b64encode(f"{encoded_id}:{encoded_secret}".encode()).decode()
         async with httpx.AsyncClient(timeout=15.0) as client:
             token_r = await client.post(
                 "https://api.ebay.com/identity/v1/oauth2/token",
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": f"Basic {auth}",
+                    "Authorization": f"Basic {auth2}",
                 },
-                data="grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope",
+                data={
+                    "grant_type": "client_credentials",
+                    "scope": "https://api.ebay.com/oauth/api_scope/buy.item.browse"
+                },
             )
-            results["browse_oauth_token"] = {
+            results["browse_oauth_approach_a"] = {
                 "status": token_r.status_code,
                 "body_preview": token_r.text[:300],
             }
 
-            if token_r.status_code == 200:
-                token_data = token_r.json()
-                access_token = token_data.get("access_token", "")
-                # Now try Browse API search
-                browse_r = await client.get(
-                    "https://api.ebay.com/buy/browse/v1/item_summary/search",
-                    headers={
-                        "Authorization": f"Bearer {access_token}",
-                        "Content-Type": "application/json",
-                    },
-                    params={
-                        "q": "kirkland vitamin d3",
-                        "limit": "3",
-                    },
-                )
-                results["browse_api_search"] = {
-                    "status": browse_r.status_code,
-                    "body_len": len(browse_r.text),
-                    "body_preview": browse_r.text[:500],
-                }
+        # Approach B: Different scope format
+        auth3 = base64.b64encode(f"{EBAY_APP_ID}:{EBAY_CERT_ID}".encode()).decode()
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            token_r = await client.post(
+                "https://api.ebay.com/identity/v1/oauth2/token",
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Authorization": f"Basic {auth3}",
+                },
+                data="grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope",
+            )
+            results["browse_oauth_approach_b"] = {
+                "status": token_r.status_code,
+                "body_preview": token_r.text[:300],
+            }
+
     except Exception as e:
         results["browse_api"] = {"error": str(e)}
+
+    # 2b. Taxonomy API (no auth needed, test if REST endpoints work at all)
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get(
+                "https://api.ebay.com/commerce/taxonomy/v1/category_tree/default_tree",
+                headers={
+                    "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+                },
+            )
+            results["taxonomy_api"] = {
+                "status": r.status_code,
+                "body_preview": r.text[:300],
+            }
+    except Exception as e:
+        results["taxonomy_api"] = {"error": str(e)}
+
+    # 2c. Browse API with no auth (public access?)
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get(
+                "https://api.ebay.com/buy/browse/v1/item_summary/search",
+                headers={
+                    "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+                    "X-EBAY-API-IAF-TOKEN": EBAY_APP_ID,
+                },
+                params={
+                    "q": "kirkland vitamin d3",
+                    "limit": "2",
+                },
+            )
+            results["browse_no_auth"] = {
+                "status": r.status_code,
+                "body_preview": r.text[:300],
+            }
+    except Exception as e:
+        results["browse_no_auth"] = {"error": str(e)}
 
     # 3. Shopping API
     try:
