@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List, Dict, Any
 
 from .ebay_client import ebay_search, HIGH_POTENTIAL_CATEGORIES
+from .ebay_test import test_all_endpoints
 from .engine import (
     analyze_all_configs,
     generate_listing,
@@ -152,6 +153,16 @@ async def api_categories():
             for name, cat_id in HIGH_POTENTIAL_CATEGORIES.items()
         ],
     }
+
+
+@router.get("/test-ebay-apis")
+async def api_test_ebay_apis():
+    """Test all eBay API endpoints from this server to find which ones work."""
+    try:
+        results = await test_all_endpoints()
+        return {"success": True, "data": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/scan")
