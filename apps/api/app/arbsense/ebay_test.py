@@ -101,8 +101,36 @@ async def test_all_endpoints() -> dict:
     except Exception as e:
         results["shopping_api"] = {"error": str(e)}
 
-    # 4. Trading API (SOAP/XML)
+    # 4. Trading API (SOAP/XML) - test multiple calls
     try:
+        # Test 1: GeteBayOfficialTime (simplest auth test)
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            xml_body = f"""<?xml version="1.0" encoding="utf-8"?>
+<GeteBayOfficialTimeRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>{EBAY_AUTH_TOKEN}</eBayAuthToken>
+  </RequesterCredentials>
+</GeteBayOfficialTimeRequest>"""
+            r = await client.post(
+                "https://api.ebay.com/ws/api.dll",
+                headers={
+                    "X-EBAY-API-CALL-NAME": "GeteBayOfficialTime",
+                    "X-EBAY-API-SITEID": "0",
+                    "X-EBAY-API-COMPATIBILITY-LEVEL": "967",
+                    "X-EBAY-API-APP-ID": EBAY_APP_ID,
+                    "X-EBAY-API-DEV-ID": EBAY_DEV_ID,
+                    "X-EBAY-API-CERT-ID": EBAY_CERT_ID,
+                    "Content-Type": "text/xml",
+                },
+                content=xml_body,
+            )
+            results["trading_gettime"] = {
+                "status": r.status_code,
+                "body_len": len(r.text),
+                "body_preview": r.text[:500],
+            }
+
+        # Test 2: GetSearchResults
         async with httpx.AsyncClient(timeout=15.0) as client:
             xml_body = f"""<?xml version="1.0" encoding="utf-8"?>
 <GetSearchResultsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
@@ -112,8 +140,8 @@ async def test_all_endpoints() -> dict:
   <Query>kirkland vitamin d3</Query>
   <Pagination>
     <EntriesPerPage>2</EntriesPerPage>
+    <PageNumber>1</PageNumber>
   </Pagination>
-  <OutputSelector>ItemArray.Item.Title</OutputSelector>
 </GetSearchResultsRequest>"""
             r = await client.post(
                 "https://api.ebay.com/ws/api.dll",
@@ -122,14 +150,16 @@ async def test_all_endpoints() -> dict:
                     "X-EBAY-API-SITEID": "0",
                     "X-EBAY-API-COMPATIBILITY-LEVEL": "967",
                     "X-EBAY-API-APP-ID": EBAY_APP_ID,
+                    "X-EBAY-API-DEV-ID": EBAY_DEV_ID,
+                    "X-EBAY-API-CERT-ID": EBAY_CERT_ID,
                     "Content-Type": "text/xml",
                 },
                 content=xml_body,
             )
-            results["trading_api_search"] = {
+            results["trading_search"] = {
                 "status": r.status_code,
                 "body_len": len(r.text),
-                "body_preview": r.text[:500],
+                "body_preview": r.text[:800],
             }
     except Exception as e:
         results["trading_api"] = {"error": str(e)}
