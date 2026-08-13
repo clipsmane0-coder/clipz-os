@@ -7,6 +7,7 @@ from typing import Optional, List, Dict, Any
 
 from .ebay_client import ebay_search, HIGH_POTENTIAL_CATEGORIES
 from .ebay_test import test_all_endpoints
+from .ebay_trading import get_categories, get_category_listings, get_item, MULTIPACK_CATEGORIES
 from .engine import (
     analyze_all_configs,
     generate_listing,
@@ -161,6 +162,76 @@ async def api_test_ebay_apis():
     try:
         results = await test_all_endpoints()
         return {"success": True, "data": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/categories/tree")
+async def api_categories_tree(
+    parent: str = "-1",
+    level: int = 1,
+):
+    """Browse eBay category tree via Trading API (works from Fly.io)."""
+    try:
+        categories = await get_categories(category_parent=parent, level_limit=level)
+        return {"success": True, "count": len(categories), "categories": categories}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/category/listings")
+async def api_category_listings(
+    category_id: str = "184634",
+    max_items: int = 10,
+    page: int = 1,
+):
+    """Get active listings from an eBay category via Trading API."""
+    try:
+        result = await get_category_listings(category_id, max_items, page)
+        items = result.get("_items_list", [])
+        total = result.get("PaginationResult", {}).get("TotalNumberOfEntries", 0)
+        has_more = result.get("HasMoreItems", "false") == "true"
+
+        formatted = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            formatted.append({
+                "item_id": item.get("ItemID", ""),
+                "title": item.get("Title", ""),
+                "price": float(item.get("BuyItNowPrice", {}).get("value", 0))
+                       if isinstance(item.get("BuyItNowPrice"), dict)
+                       else float(item.get("CurrentPrice", {}).get("value", 0))
+                       if isinstance(item.get("CurrentPrice"), dict)
+                       else 0,
+                "quantity": item.get("Quantity", 0),
+                "seller": item.get("Seller", {}).get("UserID", "")
+                        if isinstance(item.get("Seller"), dict) else "",
+                "watch_count": item.get("WatchCount", 0),
+                "category_id": item.get("PrimaryCategory", {}).get("CategoryID", "")
+                              if isinstance(item.get("PrimaryCategory"), dict) else "",
+                "category_name": item.get("PrimaryCategory", {}).get("CategoryName", "")
+                                if isinstance(item.get("PrimaryCategory"), dict) else "",
+            })
+
+        return {
+            "success": True,
+            "category_id": category_id,
+            "total": total,
+            "count": len(formatted),
+            "has_more": has_more,
+            "items": formatted,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/item/{item_id}")
+async def api_item_detail(item_id: str):
+    """Get full details for a specific eBay item via Trading API."""
+    try:
+        item = await get_item(item_id, include_description=False)
+        return {"success": True, "item": item}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
