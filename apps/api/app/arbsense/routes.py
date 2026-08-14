@@ -394,31 +394,97 @@ async def api_scan(
     max_results: int = 10,
 ):
     """
-    Scan for opportunities in a category.
-    NOTE: This is a discovery stub. Full automated scanning requires
-    Amazon price data integration. Use /ebay/search + /analyze for manual analysis.
+    Scan for opportunities across preset product lists.
+    Returns all qualifying opportunities sorted by net profit.
     """
-    # This is the entry point for full automated scanning.
-    # For now it returns high-potential search terms and structure.
-    categories_to_scan = []
-    if category and category in HIGH_POTENTIAL_CATEGORIES:
-        categories_to_scan = [category]
-    else:
-        categories_to_scan = list(HIGH_POTENTIAL_CATEGORIES.keys())[:3]
+    from .ebay_browse import search_items, extract_listing_price
+    from .engine import analyze_all_configs
+
+    # Curated keyword list for batch scanning (source_price = typical Amazon/Costco multipack price)
+    SCAN_KEYWORDS = [
+        # Health & Beauty
+        ("Kirkland Minoxidil 5% 6 month", 29.99, 6, "Kirkland", "Hair Loss Treatments"),
+        ("Crest 3D Whitestrips Professional Effects", 39.99, 2, "Crest", "Oral Care"),
+        ("Dove Beauty Bar 14 count", 12.99, 14, "Dove", "Bath & Body"),
+        ("Gillette Fusion5 12 count blades", 32.99, 12, "Gillette", "Shaving & Hair Removal"),
+        ("Colgate Optic White 4 pack toothpaste", 14.99, 4, "Colgate", "Oral Care"),
+        ("Neutrogena Hydro Boost Gel Cream 2 pack", 19.99, 2, "Neutrogena", "Skin Care"),
+        ("Olay Regenerist Cream 2 pack", 29.99, 2, "Olay", "Skin Care"),
+        # Household
+        ("Lysol Disinfecting Wipes 6 pack", 14.99, 6, "Lysol", "Household Supplies"),
+        ("Clorox Disinfecting Wipes 6 pack", 12.99, 6, "Clorox", "Household Supplies"),
+        ("Bounty Paper Towels 12 rolls", 24.99, 12, "Bounty", "Paper Towels"),
+        ("Tide PODS 112 count", 19.99, 1, "Tide", "Laundry Detergent"),
+        ("Ziploc Freezer Bags Gallon 150 ct", 14.99, 1, "Ziploc", "Storage & Organization"),
+        # Pet Supplies
+        ("Frontline Plus for Dogs 6 doses", 49.99, 6, "Frontline", "Flea & Tick"),
+        ("Greenies Dental Chews Regular 36 ct", 29.99, 36, "Greenies", "Dog Treats"),
+        ("Advantage II for Cats 6 pack", 39.99, 6, "Advantage", "Flea & Tick"),
+        # Supplements
+        ("Nature Made Vitamin D3 2000 IU 250 ct", 12.99, 1, "Nature Made", "Vitamins"),
+        ("Vital Proteins Collagen Peptides 24oz", 29.99, 1, "Vital Proteins", "Supplements"),
+        ("Optimum Nutrition Gold Standard Whey 5lb", 54.99, 1, "Optimum Nutrition", "Protein"),
+        ("Omega 3 fish oil 240 softgels", 19.99, 1, "Generic", "Vitamins"),
+        ("Liquid IV Hydration Multiplier 30 pack", 22.99, 1, "Liquid IV", "Sports Nutrition"),
+        # Nicotine
+        ("Nicotine Lozenge 2mg 216 count", 29.99, 216, "Generic", "Smoking Cessation"),
+        ("Nicorette Gum 4mg 170 count", 39.99, 170, "Nicorette", "Smoking Cessation"),
+        # Personal care
+        ("Philips Sonicare replacement heads 8 pack", 29.99, 8, "Philips", "Electric Toothbrush Heads"),
+        ("Brita water filters 10 pack", 29.99, 10, "Brita", "Water Filters"),
+    ]
+
+    results = []
+    for kw, src_price, src_size, brand, cat in SCAN_KEYWORDS:
+        try:
+            items = await search_items(keyword=kw, limit=20, sort="price")
+            if not items:
+                continue
+            
+            prices = sorted([
+                extract_listing_price(i) for i in items if extract_listing_price(i) > 0
+            ])
+            if not prices:
+                continue
+            
+            median_price = prices[len(prices)//2]
+            
+            configs, best = analyze_all_configs(
+                src_price, src_size, {1: median_price}, shipping_cost=5.0
+            )
+            
+            if best.net_profit >= min_profit:
+                results.append({
+                    "keyword": kw,
+                    "brand": brand,
+                    "category": cat,
+                    "ebay_listings": len(prices),
+                    "ebay_median_price": median_price,
+                    "ebay_low_price": prices[0],
+                    "ebay_high_price": prices[-1],
+                    "source_price": src_price,
+                    "source_size": src_size,
+                    "cost_per_unit": src_price / src_size,
+                    "best_sell_size": best.sell_units,
+                    "listings_per_pack": best.number_of_listings,
+                    "net_profit": best.net_profit,
+                    "profit_per_listing": best.profit_per_listing,
+                    "roi": best.roi,
+                    "margin": best.margin,
+                    "sell_price": best.total_revenue / best.number_of_listings if best.number_of_listings > 0 else 0,
+                    "break_even": best.break_even_sell_price,
+                    "leftover_units": best.leftover_units,
+                })
+        except Exception:
+            continue
+
+    # Sort by net profit descending
+    results.sort(key=lambda x: x["net_profit"], reverse=True)
 
     return {
         "success": True,
-        "status": "discovery_initiated",
-        "scanning_categories": categories_to_scan,
-        "note": (
-            "Automated cross-marketplace scanning requires both eBay AND Amazon "
-            "price data. Use /ebay/search to find products, then /analyze with "
-            "source prices for full analysis."
-        ),
-        "next_steps": [
-            "1. Search eBay for products with high sold counts",
-            "2. Find corresponding Amazon multipack source price",
-            "3. Call /analyze with both eBay and source prices",
-            "4. Review results and approve/reject",
-        ],
+        "total_scanned": len(SCAN_KEYWORDS),
+        "qualifying": len(results),
+        "min_profit_threshold": min_profit,
+        "opportunities": results[:max_results] if max_results > 0 else results,
     }
