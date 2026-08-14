@@ -8,6 +8,14 @@ from typing import Optional, List, Dict, Any
 from .ebay_client import ebay_search, HIGH_POTENTIAL_CATEGORIES
 from .ebay_test import test_all_endpoints
 from .ebay_trading import get_categories, get_category_listings, get_item, MULTIPACK_CATEGORIES
+from .ebay_browse import (
+    search_items,
+    get_item as browse_get_item,
+    extract_listing_price,
+    extract_shipping,
+    get_lowest_price,
+    get_median_price,
+)
 from .engine import (
     analyze_all_configs,
     generate_listing,
@@ -232,6 +240,149 @@ async def api_item_detail(item_id: str):
     try:
         item = await get_item(item_id, include_description=False)
         return {"success": True, "item": item}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/browse/search")
+async def api_browse_search(
+    q: str = Query(..., description="Search keywords"),
+    category_id: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    limit: int = 20,
+    sort: str = "-price",
+):
+    """Search eBay marketplace via Browse API (bypasses Akamai)."""
+    try:
+        items = await search_items(
+            keyword=q,
+            limit=limit,
+            category_id=category_id,
+            min_price=min_price,
+            max_price=max_price,
+            sort=sort,
+        )
+        prices = [extract_listing_price(i) for i in items if extract_listing_price(i) > 0]
+        return {
+            "success": True,
+            "total_found": len(items),
+            "lowest_price": min(prices) if prices else 0,
+            "median_price": sorted(prices)[len(prices)//2] if prices else 0,
+            "items": items,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/discover")
+async def api_discover(
+    keyword: str = Query(..., description="Product to analyze (eBay side)"),
+    source_price: float = Query(..., description="Source multipack price"),
+    source_size: int = Query(..., description="Source pack size (number of units)"),
+    brand: str = "Generic",
+    min_profit: float = 40.0,
+):
+    """
+    Full discovery + analysis for a product:
+    1. Search eBay for the product (Browse API)
+    2. Get median market price
+    3. Run multipack analysis against source price
+    4. Return whether it meets the profit threshold
+    """
+    try:
+        # Step 1: Search eBay for market price data
+        items = await search_items(keyword=keyword, limit=30, sort="price")
+        if not items:
+            return {
+                "success": False,
+                "keyword": keyword,
+                "error": "No eBay listings found for this keyword",
+            }
+
+        # Step 2: Compute market price metrics
+        prices = sorted([extract_listing_price(i) for i in items if extract_listing_price(i) > 0])
+        if not prices:
+            return {"success": False, "error": "No valid prices found"}
+
+        shipping_costs = [extract_shipping(i) for i in items if extract_listing_price(i) > 0]
+        avg_shipping = sum(shipping_costs) / len(shipping_costs) if shipping_costs else 0.0
+
+        # Use median price as market price (robust against outliers)
+        median_price = prices[len(prices)//2]
+        low_price = prices[0]
+        high_price = prices[-1]
+
+        # Step 3: Analyze against source pack
+        # For eBay side, we test multiple single-unit resale scenarios
+        ebay_prices = {1: median_price}
+
+        configs, best = analyze_all_configs(
+            source_price, source_size, ebay_prices, shipping_cost=avg_shipping
+        )
+
+        score, risk_factors = score_opportunity(best, {
+            "estimated_monthly_sales": 0,
+            "confidence": "medium",
+        })
+
+        # Generate listing
+        listing = generate_listing(
+            keyword, brand, best.sell_units,
+            best.total_revenue / best.number_of_listings if best.number_of_listings > 0 else 0,
+        )
+
+        report = format_analysis_report(
+            keyword, brand, source_price, source_size,
+            best, configs,
+            {
+                "estimated_monthly_sales": 0,
+                "confidence": "medium",
+                "sold_items_count": len(prices),
+                "ebay_listings_found": len(items),
+                "ebay_low_price": low_price,
+                "ebay_median_price": median_price,
+                "ebay_high_price": high_price,
+            },
+            score, risk_factors,
+        )
+
+        return {
+            "success": True,
+            "meets_threshold": best.net_profit >= min_profit,
+            "keyword": keyword,
+            "ebay_market": {
+                "listings_found": len(items),
+                "lowest_price": low_price,
+                "median_price": median_price,
+                "highest_price": high_price,
+                "avg_shipping": avg_shipping,
+            },
+            "source": {
+                "price": source_price,
+                "size": source_size,
+                "cost_per_unit": source_price / source_size,
+            },
+            "best_config": {
+                "sell_size": best.sell_units,
+                "sell_price": best.total_revenue / best.number_of_listings if best.number_of_listings > 0 else 0,
+                "listings_per_pack": best.number_of_listings,
+                "leftover_units": best.leftover_units,
+                "net_profit": best.net_profit,
+                "profit_per_listing": best.profit_per_listing,
+                "roi": best.roi,
+                "margin": best.margin,
+            },
+            "risk_factors": risk_factors,
+            "listing": {
+                "title": listing.title,
+                "description": listing.description,
+                "price": listing.price,
+                "category": listing.category,
+                "condition": listing.condition,
+            },
+            "report": report,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
