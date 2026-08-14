@@ -390,52 +390,201 @@ async def api_discover(
 @router.get("/scan")
 async def api_scan(
     category: Optional[str] = None,
-    min_profit: float = 40,
-    max_results: int = 10,
+    min_profit: float = 0,
+    max_results: int = 0,
+    page: int = 1,
+    per_page: int = 50,
+    sort_by: str = "net_profit",
+    sort_dir: str = "desc",
+    search: Optional[str] = None,
 ):
     """
-    Scan for opportunities across preset product lists.
-    Returns all qualifying opportunities sorted by net profit.
+    Scan for opportunities across 100+ preset products.
+    Supports pagination, sorting, filtering, and search.
     """
     from .ebay_browse import search_items, extract_listing_price
     from .engine import analyze_all_configs
 
-    # Curated keyword list for batch scanning (source_price = typical Amazon/Costco multipack price)
+    # Curated product list: (keyword, source_price, source_size, brand, category)
+    # Source prices = typical Amazon/Costco multipack prices
     SCAN_KEYWORDS = [
-        # Health & Beauty
+        # === HEALTH & BEAUTY: Hair Care (14) ===
         ("Kirkland Minoxidil 5% 6 month", 29.99, 6, "Kirkland", "Hair Loss Treatments"),
-        ("Crest 3D Whitestrips Professional Effects", 39.99, 2, "Crest", "Oral Care"),
+        ("Rogaine Minoxidil 5% foam 3 month", 44.99, 3, "Rogaine", "Hair Loss Treatments"),
+        ("Nioxin System 4 shampoo conditioner duo", 39.99, 2, "Nioxin", "Hair Loss Treatments"),
+        ("Olaplex No. 3 Hair Perfector 3.3 oz 2 pack", 54.99, 2, "Olaplex", "Hair Treatments"),
+        ("Moroccanoil Treatment 100ml 2 pack", 69.99, 2, "Moroccanoil", "Hair Treatments"),
+        ("Redken Extreme Shampoo Conditioner 33.8 oz duo", 49.99, 2, "Redken", "Shampoo & Conditioner"),
+        ("Biolage Color Last Shampoo Conditioner 33.8 oz", 34.99, 2, "Biolage", "Shampoo & Conditioner"),
+        ("TRESemme Keratin Smooth Shampoo Conditioner 28oz 4 pack", 19.99, 4, "TRESemme", "Shampoo & Conditioner"),
+        ("Herbal Essences bio renew shampoo 4 pack", 14.99, 4, "Herbal Essences", "Shampoo & Conditioner"),
+        ("Pantene Pro-V Shampoo Conditioner 27.7oz 2 pack", 12.99, 2, "Pantene", "Shampoo & Conditioner"),
+        ("Dove Shampoo Conditioner 24 oz 4 pack", 16.99, 4, "Dove", "Shampoo & Conditioner"),
+        ("OGX Argan Oil of Morocco shampoo 19.5 oz 4 pack", 24.99, 4, "OGX", "Shampoo & Conditioner"),
+        ("Head & Shoulders Clinical 13.5 oz 3 pack", 21.99, 3, "Head & Shoulders", "Shampoo & Conditioner"),
+        ("Garnier Fructis Grow Strong Shampoo Conditioner 22oz 2 pack", 9.99, 2, "Garnier", "Shampoo & Conditioner"),
+
+        # === HEALTH & BEAUTY: Skin Care (14) ===
+        ("CeraVe Moisturizing Cream 19oz 2 pack", 29.99, 2, "CeraVe", "Skin Care"),
+        ("CeraVe SA Cleanser 16oz 2 pack", 24.99, 2, "CeraVe", "Skin Care"),
+        ("CeraVe Hydrating Cleanser 16oz 2 pack", 22.99, 2, "CeraVe", "Skin Care"),
+        ("Neutrogena Hydro Boost Gel Cream 1.7 oz 2 pack", 34.99, 2, "Neutrogena", "Skin Care"),
+        ("Neutrogena Rapid Wrinkle Repair 2 pack", 39.99, 2, "Neutrogena", "Skin Care"),
+        ("Olay Regenerist Cream 1.7 oz 2 pack", 39.99, 2, "Olay", "Skin Care"),
+        ("Olay Total Effects 1.7 oz 2 pack", 29.99, 2, "Olay", "Skin Care"),
+        ("RoC Retinol Correxion cream 1 oz 2 pack", 34.99, 2, "RoC", "Skin Care"),
+        ("Eucerin Advanced Repair Lotion 16.9oz 3 pack", 19.99, 3, "Eucerin", "Skin Care"),
+        ("Aveeno Daily Moisturizing Lotion 18oz 2 pack", 16.99, 2, "Aveeno", "Skin Care"),
+        ("Cetaphil Moisturizing Lotion 16oz 2 pack", 19.99, 2, "Cetaphil", "Skin Care"),
+        ("La Roche-Posay Toleriane Double Repair 2.5 oz 2 pack", 39.99, 2, "La Roche-Posay", "Skin Care"),
+        ("The Ordinary Niacinamide 10% 1oz 3 pack", 19.99, 3, "The Ordinary", "Skin Care"),
+        ("Paulas Choice 2% BHA Liquid Exfoliant 4 oz 2 pack", 34.99, 2, "Paula's Choice", "Skin Care"),
+
+        # === HEALTH & BEAUTY: Oral Care (8) ===
+        ("Crest 3D Whitestrips Professional Effects", 39.99, 1, "Crest", "Oral Care"),
+        ("Crest Pro-Health Mouthwash 1L 4 pack", 19.99, 4, "Crest", "Oral Care"),
+        ("Colgate Optic White toothpaste 4 pack", 14.99, 4, "Colgate", "Oral Care"),
+        ("Colgate Total toothpaste 4.8 oz 4 pack", 12.99, 4, "Colgate", "Oral Care"),
+        ("Listerine Cool Mint Mouthwash 1L 4 pack", 18.99, 4, "Listerine", "Oral Care"),
+        ("Philips Sonicare replacement heads 8 pack", 29.99, 8, "Philips Sonicare", "Electric Toothbrush Heads"),
+        ("Oral-B replacement heads 12 pack", 24.99, 12, "Oral-B", "Electric Toothbrush Heads"),
+        ("Sensodyne Repair & Protect toothpaste 4 pack", 19.99, 4, "Sensodyne", "Oral Care"),
+
+        # === HEALTH & BEAUTY: Bath & Body (6) ===
         ("Dove Beauty Bar 14 count", 12.99, 14, "Dove", "Bath & Body"),
+        ("Dove Body Wash 24 oz 4 pack", 19.99, 4, "Dove", "Bath & Body"),
+        ("Bath and Body Works Fine Fragrance Mist 8 oz 3 pack", 29.99, 3, "Bath & Body Works", "Fragrance"),
+        ("Old Spice Body Wash 24 oz 4 pack", 18.99, 4, "Old Spice", "Bath & Body"),
+        ("Method Body Wash 18 oz 6 pack", 24.99, 6, "Method", "Bath & Body"),
+        ("Caress Body Wash 18 oz 4 pack", 14.99, 4, "Caress", "Bath & Body"),
+
+        # === HEALTH & BEAUTY: Shaving (4) ===
         ("Gillette Fusion5 12 count blades", 32.99, 12, "Gillette", "Shaving & Hair Removal"),
-        ("Colgate Optic White 4 pack toothpaste", 14.99, 4, "Colgate", "Oral Care"),
-        ("Neutrogena Hydro Boost Gel Cream 2 pack", 19.99, 2, "Neutrogena", "Skin Care"),
-        ("Olay Regenerist Cream 2 pack", 29.99, 2, "Olay", "Skin Care"),
-        # Household
-        ("Lysol Disinfecting Wipes 6 pack", 14.99, 6, "Lysol", "Household Supplies"),
-        ("Clorox Disinfecting Wipes 6 pack", 12.99, 6, "Clorox", "Household Supplies"),
-        ("Bounty Paper Towels 12 rolls", 24.99, 12, "Bounty", "Paper Towels"),
+        ("Gillette Mach3 15 count cartridges", 27.99, 15, "Gillette", "Shaving & Hair Removal"),
+        ("Harrys 5-blade razor refills 12 count", 24.99, 12, "Harry's", "Shaving & Hair Removal"),
+        ("Schick Hydro 5 12 count refill blades", 29.99, 12, "Schick", "Shaving & Hair Removal"),
+
+        # === HOUSEHOLD: Cleaning (12) ===
+        ("Lysol Disinfecting Wipes 6 pack", 14.99, 6, "Lysol", "Household Cleaning"),
+        ("Clorox Disinfecting Wipes 6 pack", 12.99, 6, "Clorox", "Household Cleaning"),
+        ("Clorox Bleach 121 oz 3 pack", 18.99, 3, "Clorox", "Household Cleaning"),
+        ("Windex Glass Cleaner 23 oz 6 pack", 19.99, 6, "Windex", "Household Cleaning"),
+        ("Method All-Purpose Cleaner 28 oz 6 pack", 21.99, 6, "Method", "Household Cleaning"),
+        ("Mr. Clean Magic Eraser 10 count", 14.99, 10, "Mr. Clean", "Household Cleaning"),
+        ("Simple Green All-Purpose Cleaner 1 gallon 2 pack", 19.99, 2, "Simple Green", "Household Cleaning"),
+        ("Pine-Sol Multi-Surface Cleaner 144 oz 2 pack", 16.99, 2, "Pine-Sol", "Household Cleaning"),
+        ("Lysol Toilet Bowl Cleaner 24 oz 4 pack", 14.99, 4, "Lysol", "Household Cleaning"),
+        ("Scrubbing Bubbles Toilet Cleaner 20 oz 4 pack", 16.99, 4, "Scrubbing Bubbles", "Household Cleaning"),
+        ("Febreze Air Freshener 8.8 oz 3 pack", 14.99, 3, "Febreze", "Air Fresheners"),
+        ("Glade PlugIns Refills 10 count", 17.99, 10, "Glade", "Air Fresheners"),
+
+        # === HOUSEHOLD: Laundry (6) ===
         ("Tide PODS 112 count", 19.99, 1, "Tide", "Laundry Detergent"),
-        ("Ziploc Freezer Bags Gallon 150 ct", 14.99, 1, "Ziploc", "Storage & Organization"),
-        # Pet Supplies
+        ("Tide Liquid Laundry Detergent 150 oz 2 pack", 24.99, 2, "Tide", "Laundry Detergent"),
+        ("Persil ProClean 110 load 2 pack", 27.99, 2, "Persil", "Laundry Detergent"),
+        ("Gain Flings 112 count", 17.99, 1, "Gain", "Laundry Detergent"),
+        ("Downy Fabric Softener 140 oz 2 pack", 19.99, 2, "Downy", "Laundry Detergent"),
+        ("Bounce Dryer Sheets 240 count 2 pack", 12.99, 2, "Bounce", "Laundry Detergent"),
+
+        # === HOUSEHOLD: Paper & Plastic (8) ===
+        ("Bounty Paper Towels 12 rolls", 24.99, 12, "Bounty", "Paper Towels"),
+        ("Brawny Paper Towels 8 rolls", 14.99, 8, "Brawny", "Paper Towels"),
+        ("Quilted Northern Toilet Paper 24 rolls", 29.99, 24, "Quilted Northern", "Toilet Paper"),
+        ("Charmin Ultra Soft Toilet Paper 24 rolls", 27.99, 24, "Charmin", "Toilet Paper"),
+        ("Kleenex Facial Tissue 8 pack", 14.99, 8, "Kleenex", "Facial Tissue"),
+        ("Ziploc Freezer Bags Gallon 150 count", 14.99, 1, "Ziploc", "Storage & Organization"),
+        ("Glad Trash Bags 13 gallon 120 count", 16.99, 120, "Glad", "Trash Bags"),
+        ("Hefty Ultra Strong 13 gallon 100 count", 14.99, 100, "Hefty", "Trash Bags"),
+
+        # === HOUSEHOLD: Kitchen (6) ===
+        ("Glad Food Storage Containers 40 piece set", 19.99, 1, "Glad", "Food Storage"),
+        ("Reynolds Wrap Aluminum Foil 200 sq ft 2 pack", 14.99, 2, "Reynolds", "Food Storage"),
+        ("Saran Wrap 300 sq ft 2 pack", 12.99, 2, "Saran Wrap", "Food Storage"),
+        ("Dawn Dish Soap 19.4 oz 6 pack", 19.99, 6, "Dawn", "Dish Soap"),
+        ("Finish Quantum Dishwasher Tablets 82 count", 19.99, 82, "Finish", "Dishwasher Detergent"),
+        ("Cascade Platinum Pods 62 count", 19.99, 62, "Cascade", "Dishwasher Detergent"),
+
+        # === PET SUPPLIES (12) ===
         ("Frontline Plus for Dogs 6 doses", 49.99, 6, "Frontline", "Flea & Tick"),
-        ("Greenies Dental Chews Regular 36 ct", 29.99, 36, "Greenies", "Dog Treats"),
+        ("Frontline Gold for Dogs 6 doses", 59.99, 6, "Frontline", "Flea & Tick"),
         ("Advantage II for Cats 6 pack", 39.99, 6, "Advantage", "Flea & Tick"),
-        # Supplements
+        ("Advantage Multi for Dogs 6 doses", 74.99, 6, "Advantage", "Flea & Tick"),
+        ("Heartgard Plus for Dogs 6 count", 59.99, 6, "Heartgard", "Pet Medications"),
+        ("NexGard Chewables for Dogs 6 pack", 99.99, 6, "NexGard", "Flea & Tick"),
+        ("Sentinel Spectrum 6 pack Dogs", 54.99, 6, "Sentinel", "Pet Medications"),
+        ("Greenies Dental Chews Regular 36 count", 29.99, 36, "Greenies", "Dog Treats"),
+        ("Milk-Bone Original Dog Treats 10 lb", 19.99, 1, "Milk-Bone", "Dog Treats"),
+        ("Blue Buffalo Life Protection 30lb", 54.99, 1, "Blue Buffalo", "Dog Food"),
+        ("Purina Pro Plan 35lb dog food", 59.99, 1, "Purina Pro Plan", "Dog Food"),
+        ("Temptations Cat Treats 30 oz", 14.99, 1, "Temptations", "Cat Treats"),
+
+        # === PET SUPPLIES: Cat Litter (2) ===
+        ("Tidy Cats Clumping Litter 20 lb 2 pack", 19.99, 2, "Tidy Cats", "Cat Litter"),
+        ("Arm & Hammer Clump & Seal 40 lb", 24.99, 1, "Arm & Hammer", "Cat Litter"),
+
+        # === SUPPLEMENTS & VITAMINS (10) ===
         ("Nature Made Vitamin D3 2000 IU 250 ct", 12.99, 1, "Nature Made", "Vitamins"),
+        ("Nature Made Vitamin C 1000mg 300 ct", 14.99, 1, "Nature Made", "Vitamins"),
         ("Vital Proteins Collagen Peptides 24oz", 29.99, 1, "Vital Proteins", "Supplements"),
         ("Optimum Nutrition Gold Standard Whey 5lb", 54.99, 1, "Optimum Nutrition", "Protein"),
-        ("Omega 3 fish oil 240 softgels", 19.99, 1, "Generic", "Vitamins"),
+        ("Omega 3 Fish Oil 240 softgels", 19.99, 1, "Nature's Bounty", "Vitamins"),
+        ("Garden of Life Vitamin Code 120 ct", 29.99, 1, "Garden of Life", "Vitamins"),
+        ("Turmeric Curcumin with Ginger 180 ct", 14.99, 1, "Nature Made", "Supplements"),
+        ("Magnesium Citrate 200 mg 300 tablets", 12.99, 1, "Nature's Bounty", "Vitamins"),
+        ("Melatonin 5 mg 300 tablets", 9.99, 1, "Natrol", "Supplements"),
         ("Liquid IV Hydration Multiplier 30 pack", 22.99, 1, "Liquid IV", "Sports Nutrition"),
-        # Nicotine
-        ("Nicotine Lozenge 2mg 216 count", 29.99, 216, "Generic", "Smoking Cessation"),
-        ("Nicorette Gum 4mg 170 count", 39.99, 170, "Nicorette", "Smoking Cessation"),
-        # Personal care
-        ("Philips Sonicare replacement heads 8 pack", 29.99, 8, "Philips", "Electric Toothbrush Heads"),
-        ("Brita water filters 10 pack", 29.99, 10, "Brita", "Water Filters"),
+
+        # === SMOKING CESSATION (4) ===
+        ("Nicotine Lozenge 2mg 216 count", 29.99, 216, "GoodSense", "Smoking Cessation"),
+        ("Nicotine Lozenge 4mg 216 count", 34.99, 216, "GoodSense", "Smoking Cessation"),
+        ("Nicorette Gum 4mg 170 count", 49.99, 170, "Nicorette", "Smoking Cessation"),
+        ("Nicorette Gum 2mg 170 count", 39.99, 170, "Nicorette", "Smoking Cessation"),
+
+        # === KITCHEN & DINING (4) ===
+        ("Brita Water Filter Pitcher 10 cup", 29.99, 1, "Brita", "Water Filters"),
+        ("Brita Replacement Filters 10 pack", 34.99, 10, "Brita", "Water Filters"),
+        ("Pyrex Food Storage 18 piece set", 24.99, 1, "Pyrex", "Food Storage"),
+        ("OXO Good Grips 15 piece set", 39.99, 1, "OXO", "Kitchen Tools"),
+
+        # === BABY & KIDS (4) ===
+        ("Pampers Swaddlers Size 2 186 count", 39.99, 186, "Pampers", "Diapers"),
+        ("Huggies Little Snugglers Size 2 186 ct", 37.99, 186, "Huggies", "Diapers"),
+        ("Baby Dove Tip to Toe Wash 13 oz 4 pack", 19.99, 4, "Baby Dove", "Baby Care"),
+        ("Johnson's Baby Shampoo 20 oz 3 pack", 16.99, 3, "Johnson's", "Baby Care"),
+
+        # === OFFICE & SCHOOL (4) ===
+        ("Paper Mate InkJoy Pens 60 count", 14.99, 60, "Paper Mate", "Office Supplies"),
+        ("Post-it Notes 12 pack", 16.99, 12, "Post-it", "Office Supplies"),
+        ("Bic Round Stic Pens 60 count", 9.99, 60, "Bic", "Office Supplies"),
+        ("Sharpie Permanent Markers 30 count", 19.99, 30, "Sharpie", "Office Supplies"),
+
+        # === AUTOMOTIVE (4) ===
+        ("Cabin Air Filter 2 pack", 9.99, 2, "EPAuto", "Automotive"),
+        ("Windshield Wipers 26/18 inch set", 19.99, 2, "Michelin", "Automotive"),
+        ("Castrol Edge 5W-30 Motor Oil 5 quart", 27.99, 1, "Castrol", "Automotive"),
+        ("Meguiar's Gold Class Car Wash 64 oz 2 pack", 19.99, 2, "Meguiar's", "Automotive"),
+
+        # === ELECTRONICS ACCESSORIES (4) ===
+        ("Amazon Basics AA Batteries 48 pack", 14.99, 48, "Amazon Basics", "Batteries"),
+        ("Duracell AA Batteries 24 count", 16.99, 24, "Duracell", "Batteries"),
+        ("Energizer AAA Batteries 24 count", 14.99, 24, "Energizer", "Batteries"),
+        ("Anker PowerCore 10000 Power Bank 2 pack", 29.99, 2, "Anker", "Electronics"),
     ]
 
     results = []
     for kw, src_price, src_size, brand, cat in SCAN_KEYWORDS:
+        # Filter by category
+        if category and category != "all" and cat.lower() != category.lower():
+            continue
+        # Filter by search keyword
+        if search:
+            q = search.lower()
+            if (
+                q not in kw.lower()
+                and q not in brand.lower()
+                and q not in cat.lower()
+            ):
+                continue
         try:
             items = await search_items(keyword=kw, limit=20, sort="price")
             if not items:
@@ -453,38 +602,63 @@ async def api_scan(
                 src_price, src_size, {1: median_price}, shipping_cost=5.0
             )
             
-            if best.net_profit >= min_profit:
-                results.append({
-                    "keyword": kw,
-                    "brand": brand,
-                    "category": cat,
-                    "ebay_listings": len(prices),
-                    "ebay_median_price": median_price,
-                    "ebay_low_price": prices[0],
-                    "ebay_high_price": prices[-1],
-                    "source_price": src_price,
-                    "source_size": src_size,
-                    "cost_per_unit": src_price / src_size,
-                    "best_sell_size": best.sell_units,
-                    "listings_per_pack": best.number_of_listings,
-                    "net_profit": best.net_profit,
-                    "profit_per_listing": best.profit_per_listing,
-                    "roi": best.roi,
-                    "margin": best.margin,
-                    "sell_price": best.total_revenue / best.number_of_listings if best.number_of_listings > 0 else 0,
-                    "break_even": best.break_even_sell_price,
-                    "leftover_units": best.leftover_units,
-                })
+            # Skip if below min profit threshold
+            if best.net_profit < min_profit:
+                continue
+            
+            results.append({
+                "keyword": kw,
+                "brand": brand,
+                "category": cat,
+                "ebay_listings": len(prices),
+                "ebay_median_price": median_price,
+                "ebay_low_price": prices[0],
+                "ebay_high_price": prices[-1],
+                "source_price": src_price,
+                "source_size": src_size,
+                "cost_per_unit": src_price / src_size,
+                "best_sell_size": best.sell_units,
+                "listings_per_pack": best.number_of_listings,
+                "net_profit": best.net_profit,
+                "profit_per_listing": best.profit_per_listing,
+                "roi": best.roi,
+                "margin": best.margin,
+                "sell_price": best.total_revenue / best.number_of_listings if best.number_of_listings > 0 else 0,
+                "break_even": best.break_even_sell_price,
+                "leftover_units": best.leftover_units,
+            })
         except Exception:
             continue
 
-    # Sort by net profit descending
-    results.sort(key=lambda x: x["net_profit"], reverse=True)
+    # Sort
+    reverse = sort_dir == "desc"
+    sort_key = sort_by
+    results.sort(key=lambda x: x.get(sort_key, 0), reverse=reverse)
+
+    total = len(results)
+
+    # Paginate
+    if per_page > 0:
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated = results[start:end]
+    else:
+        paginated = results
+
+    # Get all unique categories for filter sidebar
+    all_categories = sorted(set(kw[4] for kw in SCAN_KEYWORDS))
 
     return {
         "success": True,
         "total_scanned": len(SCAN_KEYWORDS),
-        "qualifying": len(results),
+        "total": total,
+        "qualifying": total,
         "min_profit_threshold": min_profit,
-        "opportunities": results[:max_results] if max_results > 0 else results,
+        "page": page,
+        "per_page": per_page if per_page > 0 else total,
+        "total_pages": (total + per_page - 1) // per_page if per_page > 0 else 1,
+        "categories": all_categories,
+        "sort_by": sort_by,
+        "sort_dir": sort_dir,
+        "opportunities": paginated,
     }
