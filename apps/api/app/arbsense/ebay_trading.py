@@ -13,7 +13,7 @@ EBAY_DEV_ID = "83d5b459-94bd-4963-a899-e694003ecde4"
 EBAY_AUTH_TOKEN = "v^1.1#i^1#p^3#I^3#r^1#f^0#t^Ul4xMF84OjVFNEVEMkM3OTk5NTUxRUI0MkJGN0VERDFEOTBBNzUzXzJfMSNFXjI2MA=="
 
 EBAY_TRADING_API = "https://api.ebay.com/ws/api.dll"
-API_COMPATIBILITY_LEVEL = "1201"
+API_COMPATIBILITY_LEVEL = "1193"
 SITE_ID = "0"  # US
 
 
@@ -117,14 +117,12 @@ async def get_category_listings(
     category_id: str,
     max_items: int = 10,
     page: int = 1,
-    item_type: str = "FixedPriceItem",
 ) -> Dict:
     """Get active listings from a category."""
     body = f"""
   <CategoryID>{category_id}</CategoryID>
   <MaxItems>{max_items}</MaxItems>
   <PageNumber>{page}</PageNumber>
-  <ItemTypeFilter>{item_type}</ItemTypeFilter>
   <IncludeWatchCount>true</IncludeWatchCount>
 """
     result = await _call_trading_api("GetCategoryListings", body)
