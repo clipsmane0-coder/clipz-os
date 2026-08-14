@@ -597,15 +597,60 @@ async def api_scan(
                 continue
             
             median_price = prices[len(prices)//2]
-            
-            configs, best = analyze_all_configs(
-                src_price, src_size, {1: median_price}, shipping_cost=5.0
-            )
-            
+
+            # Whole-pack economics (honest, defensible):
+            # Buy the source pack, resell the same pack as-is on eBay.
+            # This avoids the false "split each unit at the whole-pack price" bug.
+            revenue = median_price
+            fees = revenue * 0.13          # eBay final value fee
+            payment = revenue * 0.03 + 0.30  # payment processing fee
+            shipping_est = 5.0
+            cost = src_price
+            net_profit_full = revenue - cost - fees - payment - shipping_est
+
+            # Also evaluate a split option only where it's realistic:
+            # sell the pack split into sell_size chunks, each at a per-chunk
+            # price estimated from median (only if the per-unit is sensible).
+            # Cap split listings to avoid absurd per-unit multiplication.
+            # For safety, use splitting only when it improves profit meaningfully.
+            best = None
+            split_candidates = []
+            candidate_sizes = [s for s in [2, 3, 4, 6] if src_size % s == 0 and src_size // s <= 20]
+            for s in candidate_sizes:
+                chunk_price = median_price / (src_size // s)  # pro-rate pack value
+                chunk_cost = src_price / (src_size // s)
+                chunk_fees = chunk_price * 0.13
+                chunk_payment = chunk_price * 0.03 + 0.30
+                chunk_shipping = 4.0
+                chunk_net = chunk_price - chunk_cost - chunk_fees - chunk_payment - chunk_shipping
+                num_chunks = src_size // s
+                split_candidates.append((s, num_chunks, chunk_net * num_chunks))
+            best_split = max(split_candidates, key=lambda x: x[2], default=None) if split_candidates else None
+
+            # Choose the better: whole-pack vs best realistic split
+            if best_split and best_split[2] > net_profit_full:
+                sell_size = best_split[0]
+                num_listings = best_split[1]
+                net_profit = best_split[2]
+                profit_per_listing = best_split[2] / num_listings if num_listings else 0
+                roi = (best_split[2] / src_price * 100) if src_price else 0
+                margin = (net_profit / revenue * 100) if revenue else 0
+                sell_price = (median_price / num_listings)
+                break_even = src_price / num_listings
+            else:
+                sell_size = src_size
+                num_listings = 1
+                net_profit = net_profit_full
+                profit_per_listing = net_profit_full
+                roi = (net_profit_full / cost * 100) if cost else 0
+                margin = (net_profit_full / revenue * 100) if revenue else 0
+                sell_price = median_price
+                break_even = cost
+
             # Skip if below min profit threshold
-            if best.net_profit < min_profit:
+            if net_profit < min_profit:
                 continue
-            
+
             results.append({
                 "keyword": kw,
                 "brand": brand,
@@ -617,15 +662,15 @@ async def api_scan(
                 "source_price": src_price,
                 "source_size": src_size,
                 "cost_per_unit": src_price / src_size,
-                "best_sell_size": best.sell_units,
-                "listings_per_pack": best.number_of_listings,
-                "net_profit": best.net_profit,
-                "profit_per_listing": best.profit_per_listing,
-                "roi": best.roi,
-                "margin": best.margin,
-                "sell_price": best.total_revenue / best.number_of_listings if best.number_of_listings > 0 else 0,
-                "break_even": best.break_even_sell_price,
-                "leftover_units": best.leftover_units,
+                "best_sell_size": sell_size,
+                "listings_per_pack": num_listings,
+                "net_profit": net_profit,
+                "profit_per_listing": profit_per_listing,
+                "roi": roi,
+                "margin": margin,
+                "sell_price": sell_price,
+                "break_even": break_even,
+                "leftover_units": 0,
             })
         except Exception:
             continue
