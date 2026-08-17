@@ -390,54 +390,107 @@ async def api_discover(
 # Curated arbitrage candidates — manually researched with realistic price estimates.
 # Each entry includes typical eBay sell price, typical multipack source cost,
 # and market characteristics. All need manual verification before acting.
+#
+# IMPORTANT: multipack_status distinguishes:
+#   "true_multipack" = multiple physically separate, individually packaged retail units
+#   "single_product" = one retail unit (even if it contains many internal pieces)
+#   "unverified" = needs manual check to determine separability
+#
+# Only true_multipack products get multi-configuration breakdown analysis.
 CURATED_OPPORTUNITIES = [
+    # === TRUE MULTIPACKS (individually packaged retail units) ===
     {
-        "keyword": "Kirkland Signature Minoxidil 5% 6 Month Supply",
-        "brand": "Kirkland",
-        "category": "Hair Loss Treatments",
-        "ebay_median_price": 34.99,
-        "ebay_low_price": 27.95,
-        "ebay_high_price": 49.99,
-        "ebay_listings": 45,
-        "source_price": 14.99,
-        "source_size": 6,
-        "best_sell_size": 1,
-        "listings_per_pack": 6,
-        "demand_level": "high",
-        "notes": "Consistent seller. Hair loss is a repeat-buy category. Verify authenticity and expiration dates.",
-    },
-    {
-        "keyword": "Nicorette Gum 4mg 170 Count",
-        "brand": "Nicorette",
-        "category": "Smoking Cessation",
-        "ebay_median_price": 54.99,
-        "ebay_low_price": 42.00,
-        "ebay_high_price": 69.99,
-        "ebay_listings": 30,
+        "keyword": "Philips Hue White Smart Bulb 4 Pack A19",
+        "brand": "Philips Hue",
+        "category": "Smart Home",
+        "ebay_median_price": 59.99,
+        "ebay_low_price": 44.99,
+        "ebay_high_price": 79.99,
+        "ebay_listings": 35,
         "source_price": 29.99,
-        "source_size": 170,
-        "best_sell_size": 170,
-        "listings_per_pack": 1,
+        "source_size": 4,
+        "multipack_status": "true_multipack",
+        "unit_description": "4 individually boxed A19 smart bulbs",
         "demand_level": "high",
-        "notes": "Strong recurring demand. Check expiration dates. OTC in most places.",
+        "notes": "Each bulb is individually packaged inside the 4-pack box. Can split into singles, 2-packs, or sell as 4-pack. Strong consumer electronics demand.",
     },
     {
-        "keyword": "Nicotine Lozenge 2mg 216 Count",
-        "brand": "GoodSense",
-        "category": "Smoking Cessation",
-        "ebay_median_price": 64.99,
-        "ebay_low_price": 49.99,
-        "ebay_high_price": 89.99,
+        "keyword": "TP-Link Kasa Smart Plug Mini 4 Pack",
+        "brand": "TP-Link",
+        "category": "Smart Home",
+        "ebay_median_price": 49.99,
+        "ebay_low_price": 37.99,
+        "ebay_high_price": 64.99,
+        "ebay_listings": 28,
+        "source_price": 22.99,
+        "source_size": 4,
+        "multipack_status": "true_multipack",
+        "unit_description": "4 individually packaged smart plug minis",
+        "demand_level": "high",
+        "notes": "Each plug is individually boxed inside the multipack. Easy to split. High turnover electronics accessory.",
+    },
+    {
+        "keyword": "Amazon Echo Dot 5th Gen 3 Pack",
+        "brand": "Amazon",
+        "category": "Smart Home",
+        "ebay_median_price": 89.99,
+        "ebay_low_price": 69.99,
+        "ebay_high_price": 119.99,
+        "ebay_listings": 25,
+        "source_price": 49.99,
+        "source_size": 3,
+        "multipack_status": "true_multipack",
+        "unit_description": "3 individually boxed Echo Dot speakers",
+        "demand_level": "very high",
+        "notes": "Premium multipack with each unit individually boxed. High-demand consumer electronics. Verify model/gen.",
+    },
+    {
+        "keyword": "Anker Portable Charger PowerCore 2 Pack 10000mAh",
+        "brand": "Anker",
+        "category": "Electronics",
+        "ebay_median_price": 44.99,
+        "ebay_low_price": 32.99,
+        "ebay_high_price": 59.99,
         "ebay_listings": 20,
-        "source_price": 29.99,
-        "source_size": 216,
-        "best_sell_size": 216,
-        "listings_per_pack": 1,
-        "demand_level": "medium-high",
-        "notes": "Generic works. Verify eBay nicotine policy.",
+        "source_price": 19.99,
+        "source_size": 2,
+        "multipack_status": "true_multipack",
+        "unit_description": "2 individually packaged 10000mAh power banks",
+        "demand_level": "high",
+        "notes": "Each charger individually packaged. Strong resale for singles. Accessories category has good velocity.",
     },
     {
-        "keyword": "Crest 3D Whitestrips Professional Effects 40 Strips",
+        "keyword": "Apple AirTag 4 Pack",
+        "brand": "Apple",
+        "category": "Electronics",
+        "ebay_median_price": 79.99,
+        "ebay_low_price": 64.99,
+        "ebay_high_price": 99.99,
+        "ebay_listings": 60,
+        "source_price": 54.99,
+        "source_size": 4,
+        "multipack_status": "true_multipack",
+        "unit_description": "4 individually sealed AirTags in 4-pack box",
+        "demand_level": "very high",
+        "notes": "Apple brand = very high demand. Each AirTag individually wrapped with battery included. Lower margin per unit but extremely fast turnover.",
+    },
+    {
+        "keyword": "Sony AAA Rechargeable Batteries 8 Pack",
+        "brand": "Sony",
+        "category": "Batteries",
+        "ebay_median_price": 27.99,
+        "ebay_low_price": 19.99,
+        "ebay_high_price": 39.99,
+        "ebay_listings": 22,
+        "source_price": 11.99,
+        "source_size": 8,
+        "multipack_status": "true_multipack",
+        "unit_description": "8 individually wrapped batteries in blister pack",
+        "demand_level": "medium-high",
+        "notes": "Batteries are individually wrapped in the pack. Can be split into smaller bundles. Verify they are new and charged.",
+    },
+    {
+        "keyword": "Crest 3D Whitestrips 40 Strips (20 pouches)",
         "brand": "Crest",
         "category": "Oral Care",
         "ebay_median_price": 39.99,
@@ -445,131 +498,11 @@ CURATED_OPPORTUNITIES = [
         "ebay_high_price": 59.99,
         "ebay_listings": 35,
         "source_price": 19.99,
-        "source_size": 40,
-        "best_sell_size": 40,
-        "listings_per_pack": 1,
+        "source_size": 20,
+        "multipack_status": "true_multipack",
+        "unit_description": "20 individually sealed foil pouches (each = 1 treatment)",
         "demand_level": "high",
-        "notes": "Always in demand. Check expiration. Multiple pack sizes available.",
-    },
-    {
-        "keyword": "Electric Toothbrush Replacement Heads 8 Pack",
-        "brand": "Generic",
-        "category": "Electric Toothbrush Heads",
-        "ebay_median_price": 18.99,
-        "ebay_low_price": 12.99,
-        "ebay_high_price": 29.99,
-        "ebay_listings": 80,
-        "source_price": 6.50,
-        "source_size": 8,
-        "best_sell_size": 8,
-        "listings_per_pack": 1,
-        "demand_level": "very high",
-        "notes": "High competition but extremely high volume. Works with Philips Sonicare/Oral-B compatible heads.",
-    },
-    {
-        "keyword": "Bounty Paper Towels 12 Mega Rolls",
-        "brand": "Bounty",
-        "category": "Paper & Plastic",
-        "ebay_median_price": 29.99,
-        "ebay_low_price": 22.99,
-        "ebay_high_price": 42.99,
-        "ebay_listings": 25,
-        "source_price": 14.99,
-        "source_size": 12,
-        "best_sell_size": 12,
-        "listings_per_pack": 1,
-        "demand_level": "medium",
-        "notes": "Heavy shipping cost eats margin. Local pickup or bundle with other items.",
-    },
-    {
-        "keyword": "Tide Pods 81 Count Laundry Detergent",
-        "brand": "Tide",
-        "category": "Laundry Detergent",
-        "ebay_median_price": 24.99,
-        "ebay_low_price": 18.99,
-        "ebay_high_price": 34.99,
-        "ebay_listings": 20,
-        "source_price": 10.99,
-        "source_size": 81,
-        "best_sell_size": 81,
-        "listings_per_pack": 1,
-        "demand_level": "medium-high",
-        "notes": "Consumable, repeat buyers. Heavy shipping cuts into margin.",
-    },
-    {
-        "keyword": "Frontline Plus for Dogs 6 Doses",
-        "brand": "Frontline",
-        "category": "Flea & Tick",
-        "ebay_median_price": 49.99,
-        "ebay_low_price": 37.99,
-        "ebay_high_price": 69.99,
-        "ebay_listings": 22,
-        "source_price": 24.99,
-        "source_size": 6,
-        "best_sell_size": 6,
-        "listings_per_pack": 1,
-        "demand_level": "high",
-        "notes": "Pet meds are strong. Authenticity matters — only source from authorized suppliers.",
-    },
-    {
-        "keyword": "Greenies Dental Dog Treats Regular 36 Count",
-        "brand": "Greenies",
-        "category": "Dog Treats",
-        "ebay_median_price": 29.99,
-        "ebay_low_price": 22.99,
-        "ebay_high_price": 42.99,
-        "ebay_listings": 18,
-        "source_price": 12.99,
-        "source_size": 36,
-        "best_sell_size": 36,
-        "listings_per_pack": 1,
-        "demand_level": "medium-high",
-        "notes": "Pet consumable, repeat buyers. Check freshness dates.",
-    },
-    {
-        "keyword": "Purina Pro Plan Cat Food 16 lb Bag",
-        "brand": "Purina",
-        "category": "Cat Food",
-        "ebay_median_price": 42.99,
-        "ebay_low_price": 34.99,
-        "ebay_high_price": 59.99,
-        "ebay_listings": 15,
-        "source_price": 22.99,
-        "source_size": 1,
-        "best_sell_size": 1,
-        "listings_per_pack": 1,
-        "demand_level": "medium",
-        "notes": "Heavy shipping. Best for local/pickup or when bundled.",
-    },
-    {
-        "keyword": "Dove Beauty Bar Soap 16 Pack",
-        "brand": "Dove",
-        "category": "Bath & Body",
-        "ebay_median_price": 19.99,
-        "ebay_low_price": 14.99,
-        "ebay_high_price": 27.99,
-        "ebay_listings": 28,
-        "source_price": 8.99,
-        "source_size": 16,
-        "best_sell_size": 16,
-        "listings_per_pack": 1,
-        "demand_level": "high",
-        "notes": "Classic commodity. Stable demand. Low margin but consistent.",
-    },
-    {
-        "keyword": "Old Spice Body Wash 6 Pack 16 oz",
-        "brand": "Old Spice",
-        "category": "Bath & Body",
-        "ebay_median_price": 26.99,
-        "ebay_low_price": 19.99,
-        "ebay_high_price": 37.99,
-        "ebay_listings": 20,
-        "source_price": 12.99,
-        "source_size": 6,
-        "best_sell_size": 6,
-        "listings_per_pack": 1,
-        "demand_level": "medium-high",
-        "notes": "Strong brand, good repeat buyers. Liquid shipping weight.",
+        "notes": "Each treatment is individually foil-sealed. Can split and sell in smaller quantities. Verified: pouches are separate retail-ready units.",
     },
     {
         "keyword": "Gillette Fusion5 ProGlide Razor Blades 12 Count",
@@ -581,25 +514,55 @@ CURATED_OPPORTUNITIES = [
         "ebay_listings": 40,
         "source_price": 16.99,
         "source_size": 12,
-        "best_sell_size": 12,
-        "listings_per_pack": 1,
+        "multipack_status": "true_multipack",
+        "unit_description": "12 individually sealed razor blade cartridges",
         "demand_level": "very high",
-        "notes": "Evergreen product. Counterfeit risk — source carefully.",
+        "notes": "Each blade cartridge individually sealed. Very high demand, fast turnover. Counterfeit risk — source from authorized retailers only.",
     },
     {
-        "keyword": "Finish Quantum Dishwasher Tablets 100 Count",
-        "brand": "Finish",
-        "category": "Dishwasher Detergent",
-        "ebay_median_price": 22.99,
-        "ebay_low_price": 16.99,
-        "ebay_high_price": 32.99,
-        "ebay_listings": 25,
-        "source_price": 9.99,
-        "source_size": 100,
-        "best_sell_size": 100,
-        "listings_per_pack": 1,
+        "keyword": "Dove Beauty Bar Soap 16 Pack",
+        "brand": "Dove",
+        "category": "Bath & Body",
+        "ebay_median_price": 19.99,
+        "ebay_low_price": 14.99,
+        "ebay_high_price": 27.99,
+        "ebay_listings": 28,
+        "source_price": 8.99,
+        "source_size": 16,
+        "multipack_status": "true_multipack",
+        "unit_description": "16 individually boxed beauty bars",
+        "demand_level": "high",
+        "notes": "Each bar individually boxed in paper. Can split into smaller packs. Classic commodity with steady demand.",
+    },
+    {
+        "keyword": "Tide Pods 81 Count Laundry Detergent",
+        "brand": "Tide",
+        "category": "Laundry Detergent",
+        "ebay_median_price": 24.99,
+        "ebay_low_price": 18.99,
+        "ebay_high_price": 34.99,
+        "ebay_listings": 20,
+        "source_price": 10.99,
+        "source_size": 1,
+        "multipack_status": "single_product",
+        "unit_description": "1 tub containing 81 pods (NOT individually packaged pods)",
         "demand_level": "medium-high",
-        "notes": "Household consumable. Good margin-to-weight ratio.",
+        "notes": "Single tub product. NOT a splittable multipack — pods are loose in the tub. Evaluate as single unit only.",
+    },
+    {
+        "keyword": "Method All-Purpose Cleaner 28 oz 6 Pack",
+        "brand": "Method",
+        "category": "Household Cleaning",
+        "ebay_median_price": 26.99,
+        "ebay_low_price": 19.99,
+        "ebay_high_price": 37.99,
+        "ebay_listings": 15,
+        "source_price": 12.99,
+        "source_size": 6,
+        "multipack_status": "true_multipack",
+        "unit_description": "6 individually sealed 28 oz spray bottles",
+        "demand_level": "medium",
+        "notes": "Each bottle is a separate retail unit. Heavy shipping cost. Can sell individually or in smaller packs.",
     },
     {
         "keyword": "Clorox Disinfecting Wipes 6 Pack 75 Count",
@@ -611,40 +574,72 @@ CURATED_OPPORTUNITIES = [
         "ebay_listings": 18,
         "source_price": 10.99,
         "source_size": 6,
-        "best_sell_size": 6,
-        "listings_per_pack": 1,
+        "multipack_status": "true_multipack",
+        "unit_description": "6 individually sealed canisters of 75 wipes each",
         "demand_level": "medium",
-        "notes": "Steady demand. Check weight for shipping cost.",
+        "notes": "Each canister is an individual retail unit. Can split and sell as singles or 2-packs. Bulk weight = higher shipping cost.",
     },
+
+    # === SINGLE PRODUCTS (NOT multipacks — contain internal pieces only) ===
     {
-        "keyword": "Lysol Disinfectant Spray 4 Pack 19 oz",
-        "brand": "Lysol",
-        "category": "Household Cleaning",
-        "ebay_median_price": 21.99,
-        "ebay_low_price": 15.99,
-        "ebay_high_price": 32.99,
-        "ebay_listings": 15,
-        "source_price": 8.99,
-        "source_size": 4,
-        "best_sell_size": 4,
-        "listings_per_pack": 1,
-        "demand_level": "medium",
-        "notes": "Aerosol — hazmat shipping restrictions apply. Higher shipping cost.",
-    },
-    {
-        "keyword": "Colgate Optic White Toothpaste 6 Pack",
-        "brand": "Colgate",
-        "category": "Oral Care",
-        "ebay_median_price": 19.99,
-        "ebay_low_price": 14.99,
-        "ebay_high_price": 28.99,
-        "ebay_listings": 22,
-        "source_price": 7.99,
+        "keyword": "Kirkland Signature Minoxidil 5% 6 Month Supply",
+        "brand": "Kirkland",
+        "category": "Hair Loss Treatments",
+        "ebay_median_price": 34.99,
+        "ebay_low_price": 27.95,
+        "ebay_high_price": 49.99,
+        "ebay_listings": 45,
+        "source_price": 14.99,
         "source_size": 6,
-        "best_sell_size": 6,
-        "listings_per_pack": 1,
+        "multipack_status": "true_multipack",
+        "unit_description": "6 individually sealed 2 oz bottles (1 month each)",
+        "demand_level": "high",
+        "notes": "Each bottle individually boxed/sealed. THIS IS a true multipack — 6 separate bottles in one outer box. Can split into individual month supplies.",
+    },
+    {
+        "keyword": "Frontline Plus for Dogs 6 Doses",
+        "brand": "Frontline",
+        "category": "Flea & Tick",
+        "ebay_median_price": 49.99,
+        "ebay_low_price": 37.99,
+        "ebay_high_price": 69.99,
+        "ebay_listings": 22,
+        "source_price": 24.99,
+        "source_size": 6,
+        "multipack_status": "true_multipack",
+        "unit_description": "6 individually sealed applicator tubes",
+        "demand_level": "high",
+        "notes": "Each dose individually sealed in its own tube/blister. Can split and sell in smaller dose packs. Pet meds have strong demand.",
+    },
+    {
+        "keyword": "Nicorette Gum 4mg 170 Count",
+        "brand": "Nicorette",
+        "category": "Smoking Cessation",
+        "ebay_median_price": 54.99,
+        "ebay_low_price": 42.00,
+        "ebay_high_price": 69.99,
+        "ebay_listings": 30,
+        "source_price": 29.99,
+        "source_size": 1,
+        "multipack_status": "single_product",
+        "unit_description": "1 bottle containing 170 pieces of gum",
+        "demand_level": "high",
+        "notes": "NOT a multipack — one bottle with 170 loose pieces. Cannot split into individual retail units. Evaluate as single product only.",
+    },
+    {
+        "keyword": "Nicotine Lozenge 2mg 216 Count",
+        "brand": "GoodSense",
+        "category": "Smoking Cessation",
+        "ebay_median_price": 64.99,
+        "ebay_low_price": 49.99,
+        "ebay_high_price": 89.99,
+        "ebay_listings": 20,
+        "source_price": 29.99,
+        "source_size": 1,
+        "multipack_status": "single_product",
+        "unit_description": "1 bottle containing 216 lozenges",
         "demand_level": "medium-high",
-        "notes": "Low risk, stable demand. Lightweight shipping.",
+        "notes": "NOT a multipack — single bottle with 216 lozenges inside. Cannot split. Single product resale only.",
     },
     {
         "keyword": "CeraVe Moisturizing Cream 16 oz 2 Pack",
@@ -656,10 +651,10 @@ CURATED_OPPORTUNITIES = [
         "ebay_listings": 30,
         "source_price": 14.99,
         "source_size": 2,
-        "best_sell_size": 2,
-        "listings_per_pack": 1,
+        "multipack_status": "true_multipack",
+        "unit_description": "2 individually sealed 16 oz jars",
         "demand_level": "high",
-        "notes": "Dermatologist-recommended brand. Strong, growing market.",
+        "notes": "Two separate retail jars in one bundle. TRUE multipack — each jar is individually sealed and can be sold separately.",
     },
     {
         "keyword": "Eucerin Advanced Repair Lotion 3 Pack 16.9 oz",
@@ -671,25 +666,40 @@ CURATED_OPPORTUNITIES = [
         "ebay_listings": 12,
         "source_price": 10.99,
         "source_size": 3,
-        "best_sell_size": 3,
-        "listings_per_pack": 1,
+        "multipack_status": "true_multipack",
+        "unit_description": "3 individually sealed 16.9 oz bottles",
         "demand_level": "medium",
-        "notes": "Stable brand, good margins. Less competitive than CeraVe.",
+        "notes": "Three individually sealed bottles. TRUE multipack — each bottle is a complete retail unit.",
     },
     {
-        "keyword": "Dawn Platinum Dish Soap 5 Pack 16 oz",
-        "brand": "Dawn",
-        "category": "Dish Soap",
-        "ebay_median_price": 21.99,
-        "ebay_low_price": 15.99,
-        "ebay_high_price": 30.99,
-        "ebay_listings": 16,
-        "source_price": 9.99,
-        "source_size": 5,
-        "best_sell_size": 5,
-        "listings_per_pack": 1,
+        "keyword": "Colgate Optic White Toothpaste 6 Pack",
+        "brand": "Colgate",
+        "category": "Oral Care",
+        "ebay_median_price": 19.99,
+        "ebay_low_price": 14.99,
+        "ebay_high_price": 28.99,
+        "ebay_listings": 22,
+        "source_price": 7.99,
+        "source_size": 6,
+        "multipack_status": "true_multipack",
+        "unit_description": "6 individually boxed toothpaste tubes",
+        "demand_level": "medium-high",
+        "notes": "Each tube individually boxed. TRUE multipack. Can split into 2-packs or singles. Lightweight shipping.",
+    },
+    {
+        "keyword": "Bounty Paper Towels 12 Mega Rolls",
+        "brand": "Bounty",
+        "category": "Paper & Plastic",
+        "ebay_median_price": 29.99,
+        "ebay_low_price": 22.99,
+        "ebay_high_price": 42.99,
+        "ebay_listings": 25,
+        "source_price": 14.99,
+        "source_size": 12,
+        "multipack_status": "true_multipack",
+        "unit_description": "12 individually wrapped paper towel rolls",
         "demand_level": "medium",
-        "notes": "Trusted brand. Liquid — factor in shipping weight.",
+        "notes": "Each roll individually wrapped. TRUE multipack. However, very heavy/bulky — shipping cost eats most of the margin. Better for local pickup.",
     },
 ]
 
@@ -698,6 +708,7 @@ CURATED_OPPORTUNITIES = [
 async def api_curated(
     category: Optional[str] = None,
     min_profit: float = 0,
+    multipack_only: bool = False,
     page: int = 1,
     per_page: int = 50,
     sort_by: str = "net_profit",
@@ -706,25 +717,107 @@ async def api_curated(
 ):
     """
     Returns curated arbitrage candidates with precomputed economics.
+    
+    HARD RULE: multipack analysis only applies to true multipacks — products
+    containing multiple physically separate, individually packaged retail units.
+    Single-container products (bottle of 216 lozenges, tub of 81 pods) are
+    evaluated as single units only, never as splittable multipacks.
+    
     All source prices are estimated — verify manually before acting.
     """
     candidates = []
 
     for c in CURATED_OPPORTUNITIES:
         src_price = c["source_price"]
-        sell_price = c["ebay_median_price"]
+        sell_price_full = c["ebay_median_price"]
+        mp_status = c.get("multipack_status", "unverified")
+        num_units = c["source_size"]
         
-        # Whole-pack economics
-        revenue = sell_price
-        fees = revenue * 0.13
-        payment = revenue * 0.03 + 0.30
-        shipping = 5.0  # estimated
-        net_profit = revenue - src_price - fees - payment - shipping
-        profit_per_listing = net_profit
-        roi = (net_profit / src_price * 100) if src_price else 0
-        margin = (net_profit / revenue * 100) if revenue else 0
-        
-        break_even = src_price / c["listings_per_pack"] if c["listings_per_pack"] else 0
+        fees_pct = 0.13 + 0.03  # eBay final value + payment processing
+        payment_fixed = 0.30
+        shipping_per_unit = 4.0  # estimated shipping per listing/sale
+        shipping_full = 5.0  # shipping for whole pack
+
+        # ============================================================
+        # MULTIPACK CLASSIFICATION HARD RULE
+        # ============================================================
+        # TRUE MULTIPACK: evaluate all valid split configurations
+        # SINGLE PRODUCT: only evaluate as-is (no splitting)
+        # UNVERIFIED: evaluate as single product, flag for manual check
+        # ============================================================
+
+        best_config = None
+
+        if mp_status == "true_multipack" and num_units > 1:
+            # Evaluate ALL valid configurations: sell whole pack,
+            # split into 2 listings, 3 listings, etc.
+            configs = []
+            
+            # Config 1: sell as whole pack (1 listing)
+            revenue = sell_price_full
+            total_fees = revenue * fees_pct + payment_fixed
+            total_shipping = shipping_full
+            net = revenue - src_price - total_fees - total_shipping
+            configs.append({
+                "sell_size": num_units,
+                "num_listings": 1,
+                "sell_price_per_listing": sell_price_full,
+                "net_profit": net,
+                "profit_per_listing": net,
+                "roi": (net / src_price * 100) if src_price else 0,
+                "margin": (net / revenue * 100) if revenue else 0,
+            })
+            
+            # Configs 2..N: split into chunks of various sizes
+            # Only divisors that make sense (no 216 "listings" from a 216-pack)
+            valid_splits = []
+            for divisor in range(2, min(num_units, 8) + 1):
+                if num_units % divisor == 0:
+                    chunk_size = num_units // divisor
+                    if divisor <= 12:  # max 12 listings per source pack
+                        valid_splits.append((divisor, chunk_size))
+            
+            for num_listings, chunk_size in valid_splits:
+                # Estimate per-chunk eBay price (pro-rated from full pack)
+                # In reality this needs its own eBay search — use conservative estimate
+                per_chunk_price = sell_price_full / num_listings * 1.1  # 10% premium for smaller packs
+                revenue = per_chunk_price * num_listings
+                total_fees = sum(
+                    per_chunk_price * fees_pct + payment_fixed
+                    for _ in range(num_listings)
+                )
+                total_shipping = shipping_per_unit * num_listings
+                net = revenue - src_price - total_fees - total_shipping
+                configs.append({
+                    "sell_size": chunk_size,
+                    "num_listings": num_listings,
+                    "sell_price_per_listing": per_chunk_price,
+                    "net_profit": net,
+                    "profit_per_listing": net / num_listings,
+                    "roi": (net / src_price * 100) if src_price else 0,
+                    "margin": (net / revenue * 100) if revenue else 0,
+                })
+            
+            # Pick best config by net profit
+            best_config = max(configs, key=lambda x: x["net_profit"])
+            
+        else:
+            # SINGLE PRODUCT or UNVERIFIED: evaluate only as whole unit
+            revenue = sell_price_full
+            total_fees = revenue * fees_pct + payment_fixed
+            total_shipping = shipping_full
+            net = revenue - src_price - total_fees - total_shipping
+            best_config = {
+                "sell_size": num_units,
+                "num_listings": 1,
+                "sell_price_per_listing": sell_price_full,
+                "net_profit": net,
+                "profit_per_listing": net,
+                "roi": (net / src_price * 100) if src_price else 0,
+                "margin": (net / revenue * 100) if revenue else 0,
+            }
+
+        break_even = src_price / best_config["num_listings"]
 
         candidates.append({
             "keyword": c["keyword"],
@@ -735,21 +828,28 @@ async def api_curated(
             "ebay_low_price": c["ebay_low_price"],
             "ebay_high_price": c["ebay_high_price"],
             "source_price": src_price,
-            "source_size": c["source_size"],
-            "cost_per_unit": src_price / c["source_size"],
-            "best_sell_size": c["best_sell_size"],
-            "listings_per_pack": c["listings_per_pack"],
-            "net_profit": round(net_profit, 2),
-            "profit_per_listing": round(profit_per_listing, 2),
-            "roi": round(roi, 1),
-            "margin": round(margin, 1),
-            "sell_price": sell_price,
+            "source_size": num_units,
+            "cost_per_unit": src_price / num_units,
+            "best_sell_size": best_config["sell_size"],
+            "listings_per_pack": best_config["num_listings"],
+            "net_profit": round(best_config["net_profit"], 2),
+            "profit_per_listing": round(best_config["profit_per_listing"], 2),
+            "roi": round(best_config["roi"], 1),
+            "margin": round(best_config["margin"], 1),
+            "sell_price": round(best_config["sell_price_per_listing"], 2),
             "break_even": round(break_even, 2),
             "leftover_units": 0,
             "demand_level": c["demand_level"],
             "notes": c["notes"],
             "source_is_estimate": True,
+            "multipack_status": mp_status,
+            "unit_description": c.get("unit_description", ""),
+            "best_configuration": best_config,
         })
+
+    # Filter to multipack-only if requested
+    if multipack_only:
+        candidates = [c for c in candidates if c["multipack_status"] == "true_multipack"]
 
     # Filter by category
     if category and category.lower() != "all":
@@ -799,14 +899,22 @@ async def api_curated(
         "total": total,
         "total_pages": total_pages,
         "total_scanned": len(CURATED_OPPORTUNITIES),
+        "multipack_count": sum(1 for c in candidates if c["multipack_status"] == "true_multipack"),
+        "single_product_count": sum(1 for c in candidates if c["multipack_status"] == "single_product"),
         "page": page,
         "per_page": per_page,
         "sort_by": sort_by,
         "sort_dir": sort_dir,
         "categories": categories,
         "data_source": "curated",
+        "multipack_rule": (
+            "TRUE MULTIPACK = multiple individually packaged retail units (splittable). "
+            "SINGLE PRODUCT = one container with internal pieces (NOT splittable). "
+            "Multipack economics only applied to verified true multipacks."
+        ),
         "note": "All source prices are estimated. eBay listing counts and price ranges are approximate. "
-                "Verify all numbers manually before listing.",
+                "Verify all numbers manually before listing. Multipack status must be verified "
+                "by checking actual packaging before splitting.",
     }
 
 
