@@ -23,6 +23,12 @@ from .temu_scraper import (
     find_multipack_products as temu_find_multipack,
     get_source_availability as temu_source_status,
 )
+from .ebay_parsebot import (
+    search_listings as ebay_search_parsebot,
+    get_price_range as ebay_get_price_range,
+    get_median_price as ebay_get_median,
+    is_available as ebay_parsebot_available,
+)
 from .engine import (
     analyze_all_configs,
     generate_listing,
@@ -1479,6 +1485,75 @@ async def api_temu_source_status():
     return {"success": True, **temu_source_status()}
 
 
+@router.get("/ebay/search")
+async def api_ebay_search_parsebot(
+    q: str = Query(..., description="Search keywords"),
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    sold: bool = False,
+    limit: int = 10,
+):
+    """Search eBay listings via Parse.bot API."""
+    try:
+        results = ebay_search_parsebot(
+            query=q,
+            max_results=limit,
+            min_price=min_price,
+            max_price=max_price,
+            sold=sold,
+        )
+        return {
+            "success": True,
+            "count": len(results),
+            "source": "parsebot",
+            "results": results,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/ebay/price-range")
+async def api_ebay_price_range(
+    q: str = Query(..., description="Search keywords"),
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    sold: bool = False,
+    sample_size: int = 20,
+):
+    """Get price range (min/median/max) for an eBay search query."""
+    try:
+        result = ebay_get_price_range(
+            query=q,
+            min_price=min_price,
+            max_price=max_price,
+            sold=sold,
+            sample_size=sample_size,
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/source-status")
+async def api_source_status():
+    """Report all available data sources and their status."""
+    temu_status = temu_source_status()
+    return {
+        "success": True,
+        "sources": {
+            "temu": {
+                "parsebot": temu_status.get("parsebot_available", False),
+                "direct_scraping": "unreliable (Cloudflare)",
+            },
+            "ebay": {
+                "parsebot": ebay_parsebot_available(),
+                "browse_api": "token_expired",
+                "finding_api": "blocked (datacenter IP)",
+            },
+        },
+    }
+
+
 # ============================================================================
 # Cross-Source Discovery (Temu source + eBay demand)
 # ============================================================================
@@ -1529,20 +1604,35 @@ async def api_discover_temu(
             ebay_price = None
             ebay_search_link = f"https://www.ebay.com/sch/i.html?_nkw={urllib.parse.quote(temu_product['title'][:80])}"
             try:
-                ebay_results = await search_items(
-                    keyword=temu_product["title"][:60],
-                    limit=10,
-                    sort="price",
-                )
-                prices = []
-                for item in ebay_results:
-                    p = extract_listing_price(item)
-                    if p and p > cost_per_unit * 2:  # reasonable spread filter
-                        prices.append(p)
-                if prices:
-                    ebay_price = sorted(prices)[len(prices) // 2]  # median
+                # Use Parse.bot eBay API if available (primary)
+                if ebay_parsebot_available():
+                    ebay_results = ebay_search_parsebot(
+                        query=temu_product["title"][:60],
+                        max_results=10,
+                    )
+                    prices = []
+                    for item in ebay_results:
+                        p = item.get("price")
+                        if p and p > cost_per_unit * 2:  # reasonable spread filter
+                            prices.append(p)
+                    if prices:
+                        ebay_price = sorted(prices)[len(prices) // 2]  # median
+                else:
+                    # Fallback to eBay Browse API
+                    ebay_results = await search_items(
+                        keyword=temu_product["title"][:60],
+                        limit=10,
+                        sort="price",
+                    )
+                    prices = []
+                    for item in ebay_results:
+                        p = extract_listing_price(item)
+                        if p and p > cost_per_unit * 2:  # reasonable spread filter
+                            prices.append(p)
+                    if prices:
+                        ebay_price = sorted(prices)[len(prices) // 2]  # median
             except Exception:
-                # eBay search failed, use estimate based on typical markup
+                # eBay search failed, skip
                 pass
 
             # If no eBay data, skip (can't verify demand)
