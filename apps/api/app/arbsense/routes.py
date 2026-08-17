@@ -4,6 +4,7 @@ eBay multipack arbitrage discovery and analysis
 """
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List, Dict, Any
+import urllib.parse
 
 from .ebay_client import ebay_search, HIGH_POTENTIAL_CATEGORIES
 from .ebay_test import test_all_endpoints
@@ -15,6 +16,12 @@ from .ebay_browse import (
     extract_shipping,
     get_lowest_price,
     get_median_price,
+)
+from .temu_scraper import (
+    search_products as temu_search,
+    get_product_detail as temu_product_detail,
+    find_multipack_products as temu_find_multipack,
+    get_source_availability as temu_source_status,
 )
 from .engine import (
     analyze_all_configs,
@@ -1399,3 +1406,209 @@ async def api_scan(
         "sort_dir": sort_dir,
         "opportunities": paginated,
     }
+
+
+# ============================================================================
+# Temu Sourcing
+# ============================================================================
+
+
+@router.get("/temu/search")
+async def api_temu_search(
+    q: str = Query(..., description="Search keywords"),
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    limit: int = 10,
+):
+    """Search Temu for products."""
+    try:
+        results = temu_search(
+            query=q,
+            max_results=limit,
+            min_price=min_price,
+            max_price=max_price,
+        )
+        return {
+            "success": True,
+            "count": len(results),
+            "results": results,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/temu/product")
+async def api_temu_product(url: str = Query(..., description="Temu product URL")):
+    """Get product details from a Temu URL."""
+    try:
+        detail = temu_product_detail(url)
+        if not detail:
+            raise HTTPException(status_code=404, detail="Could not fetch product details")
+        return {"success": True, "product": detail}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/temu/multipack")
+async def api_temu_multipack(
+    keywords: str = Query(..., description="Product keywords"),
+    pack_size: int = Query(4, description="Target pack size"),
+    limit: int = 5,
+):
+    """Find Temu multi-pack products matching keywords."""
+    try:
+        results = temu_find_multipack(
+            keywords=keywords,
+            target_pack_size=pack_size,
+            max_results=limit,
+        )
+        return {
+            "success": True,
+            "count": len(results),
+            "results": results,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/temu/source-status")
+async def api_temu_source_status():
+    """Report which Temu data sources are available/configured."""
+    return {"success": True, **temu_source_status()}
+
+
+# ============================================================================
+# Cross-Source Discovery (Temu source + eBay demand)
+# ============================================================================
+
+
+@router.get("/discover/temu")
+async def api_discover_temu(
+    keywords: str = Query(..., description="Product category/keywords"),
+    pack_size: int = Query(4, description="Target pack size on Temu"),
+    min_net_profit: float = Query(40, description="Minimum net profit per pack"),
+    estimated_shipping_per_unit: float = Query(3.5, description="Estimated shipping cost per unit"),
+    materials_per_unit: float = Query(0.75, description="Estimated packaging materials per unit"),
+    ebay_fee_pct: float = Query(13.0, description="eBay final value fee percentage"),
+    payment_fee_pct: float = Query(2.9, description="Payment processing fee percentage"),
+    payment_fee_fixed: float = Query(0.30, description="Payment processing fixed fee per sale"),
+    limit: int = 10,
+):
+    """
+    Discover Temu multipack opportunities by cross-referencing Temu prices
+    with eBay resale prices.
+    Returns only opportunities that clear the minimum net profit threshold.
+    """
+    try:
+        # Step 1: Find Temu multi-pack products
+        temu_results = temu_find_multipack(
+            keywords=keywords,
+            target_pack_size=pack_size,
+            max_results=limit * 2,
+        )
+
+        if not temu_results:
+            return {
+                "success": True,
+                "count": 0,
+                "opportunities": [],
+                "note": "No Temu products found. Check PARSE_BOT_API_KEY is configured.",
+            }
+
+        opportunities = []
+        for temu_product in temu_results:
+            pack_size_actual = max(temu_product.get("pack_size_est", 1), 1)
+            pack_price = temu_product.get("price", 0)
+            if pack_price <= 0:
+                continue
+            cost_per_unit = pack_price / pack_size_actual
+
+            # Step 2: Get eBay average price for single units
+            ebay_price = None
+            ebay_search_link = f"https://www.ebay.com/sch/i.html?_nkw={urllib.parse.quote(temu_product['title'][:80])}"
+            try:
+                ebay_results = await search_items(
+                    keyword=temu_product["title"][:60],
+                    limit=10,
+                    sort="price",
+                )
+                prices = []
+                for item in ebay_results:
+                    p = extract_listing_price(item)
+                    if p and p > cost_per_unit * 2:  # reasonable spread filter
+                        prices.append(p)
+                if prices:
+                    ebay_price = sorted(prices)[len(prices) // 2]  # median
+            except Exception:
+                # eBay search failed, use estimate based on typical markup
+                pass
+
+            # If no eBay data, skip (can't verify demand)
+            if not ebay_price:
+                continue
+
+            # Step 3: Calculate profit
+            revenue_per_unit = ebay_price
+            revenue_total = revenue_per_unit * pack_size_actual
+
+            ebay_fees = revenue_total * (ebay_fee_pct / 100)
+            payment_fees = (revenue_total * (payment_fee_pct / 100)) + (payment_fee_fixed * pack_size_actual)
+            shipping_costs = estimated_shipping_per_unit * pack_size_actual
+            materials_costs = materials_per_unit * pack_size_actual
+
+            total_costs = (
+                pack_price
+                + ebay_fees
+                + payment_fees
+                + shipping_costs
+                + materials_costs
+            )
+            net_profit = revenue_total - total_costs
+            profit_margin = (net_profit / revenue_total * 100) if revenue_total > 0 else 0
+
+            # Step 4: Only include if above threshold
+            if net_profit >= min_net_profit:
+                # Classify by tier
+                if net_profit >= 100:
+                    tier = "premium"
+                elif net_profit >= 60:
+                    tier = "preferred"
+                else:
+                    tier = "qualified"
+
+                opportunities.append({
+                    "id": None,
+                    "title": temu_product["title"],
+                    "source": "temu",
+                    "source_price": pack_price,
+                    "source_url": temu_product["url"],
+                    "pack_size": pack_size_actual,
+                    "cost_per_unit": round(cost_per_unit, 2),
+                    "ebay_price_per_unit": round(ebay_price, 2),
+                    "ebay_search_link": ebay_search_link,
+                    "revenue_total": round(revenue_total, 2),
+                    "ebay_fees": round(ebay_fees, 2),
+                    "payment_fees": round(payment_fees, 2),
+                    "shipping_costs": round(shipping_costs, 2),
+                    "materials_costs": round(materials_costs, 2),
+                    "net_profit": round(net_profit, 2),
+                    "profit_margin_pct": round(profit_margin, 1),
+                    "tier": tier,
+                    "multipack_status": "estimated",
+                    "source_price_verified": False,
+                    "ebay_price_verified": False,
+                })
+
+        # Sort by net profit descending
+        opportunities.sort(key=lambda x: x["net_profit"], reverse=True)
+
+        return {
+            "success": True,
+            "count": len(opportunities),
+            "min_profit": min_net_profit,
+            "opportunities": opportunities,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
