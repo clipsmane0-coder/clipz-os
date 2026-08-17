@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     database_url: str = "sqlite+aiosqlite:///./clipz.db"
     storage_root: str = "./storage"
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173,https://arbsense.higgsfield.app,https://shelf-lister.higgsfield.app"
     log_level: str = "INFO"
     max_upload_size_mb: int = 4096
     google_client_id: str = ""
