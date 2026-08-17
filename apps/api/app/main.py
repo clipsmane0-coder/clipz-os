@@ -23,10 +23,13 @@ app = FastAPI(
 )
 
 # CORS
+# Allow all origins — public read-only endpoints (curated list, browse search)
+# are accessible from any frontend domain. Auth'd endpoints are protected
+# by their own token checks regardless of origin.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
