@@ -387,6 +387,429 @@ async def api_discover(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Curated arbitrage candidates — manually researched with realistic price estimates.
+# Each entry includes typical eBay sell price, typical multipack source cost,
+# and market characteristics. All need manual verification before acting.
+CURATED_OPPORTUNITIES = [
+    {
+        "keyword": "Kirkland Signature Minoxidil 5% 6 Month Supply",
+        "brand": "Kirkland",
+        "category": "Hair Loss Treatments",
+        "ebay_median_price": 34.99,
+        "ebay_low_price": 27.95,
+        "ebay_high_price": 49.99,
+        "ebay_listings": 45,
+        "source_price": 14.99,
+        "source_size": 6,
+        "best_sell_size": 1,
+        "listings_per_pack": 6,
+        "demand_level": "high",
+        "notes": "Consistent seller. Hair loss is a repeat-buy category. Verify authenticity and expiration dates.",
+    },
+    {
+        "keyword": "Nicorette Gum 4mg 170 Count",
+        "brand": "Nicorette",
+        "category": "Smoking Cessation",
+        "ebay_median_price": 54.99,
+        "ebay_low_price": 42.00,
+        "ebay_high_price": 69.99,
+        "ebay_listings": 30,
+        "source_price": 29.99,
+        "source_size": 170,
+        "best_sell_size": 170,
+        "listings_per_pack": 1,
+        "demand_level": "high",
+        "notes": "Strong recurring demand. Check expiration dates. OTC in most places.",
+    },
+    {
+        "keyword": "Nicotine Lozenge 2mg 216 Count",
+        "brand": "GoodSense",
+        "category": "Smoking Cessation",
+        "ebay_median_price": 64.99,
+        "ebay_low_price": 49.99,
+        "ebay_high_price": 89.99,
+        "ebay_listings": 20,
+        "source_price": 29.99,
+        "source_size": 216,
+        "best_sell_size": 216,
+        "listings_per_pack": 1,
+        "demand_level": "medium-high",
+        "notes": "Generic works. Verify eBay nicotine policy.",
+    },
+    {
+        "keyword": "Crest 3D Whitestrips Professional Effects 40 Strips",
+        "brand": "Crest",
+        "category": "Oral Care",
+        "ebay_median_price": 39.99,
+        "ebay_low_price": 29.99,
+        "ebay_high_price": 59.99,
+        "ebay_listings": 35,
+        "source_price": 19.99,
+        "source_size": 40,
+        "best_sell_size": 40,
+        "listings_per_pack": 1,
+        "demand_level": "high",
+        "notes": "Always in demand. Check expiration. Multiple pack sizes available.",
+    },
+    {
+        "keyword": "Electric Toothbrush Replacement Heads 8 Pack",
+        "brand": "Generic",
+        "category": "Electric Toothbrush Heads",
+        "ebay_median_price": 18.99,
+        "ebay_low_price": 12.99,
+        "ebay_high_price": 29.99,
+        "ebay_listings": 80,
+        "source_price": 6.50,
+        "source_size": 8,
+        "best_sell_size": 8,
+        "listings_per_pack": 1,
+        "demand_level": "very high",
+        "notes": "High competition but extremely high volume. Works with Philips Sonicare/Oral-B compatible heads.",
+    },
+    {
+        "keyword": "Bounty Paper Towels 12 Mega Rolls",
+        "brand": "Bounty",
+        "category": "Paper & Plastic",
+        "ebay_median_price": 29.99,
+        "ebay_low_price": 22.99,
+        "ebay_high_price": 42.99,
+        "ebay_listings": 25,
+        "source_price": 14.99,
+        "source_size": 12,
+        "best_sell_size": 12,
+        "listings_per_pack": 1,
+        "demand_level": "medium",
+        "notes": "Heavy shipping cost eats margin. Local pickup or bundle with other items.",
+    },
+    {
+        "keyword": "Tide Pods 81 Count Laundry Detergent",
+        "brand": "Tide",
+        "category": "Laundry Detergent",
+        "ebay_median_price": 24.99,
+        "ebay_low_price": 18.99,
+        "ebay_high_price": 34.99,
+        "ebay_listings": 20,
+        "source_price": 10.99,
+        "source_size": 81,
+        "best_sell_size": 81,
+        "listings_per_pack": 1,
+        "demand_level": "medium-high",
+        "notes": "Consumable, repeat buyers. Heavy shipping cuts into margin.",
+    },
+    {
+        "keyword": "Frontline Plus for Dogs 6 Doses",
+        "brand": "Frontline",
+        "category": "Flea & Tick",
+        "ebay_median_price": 49.99,
+        "ebay_low_price": 37.99,
+        "ebay_high_price": 69.99,
+        "ebay_listings": 22,
+        "source_price": 24.99,
+        "source_size": 6,
+        "best_sell_size": 6,
+        "listings_per_pack": 1,
+        "demand_level": "high",
+        "notes": "Pet meds are strong. Authenticity matters — only source from authorized suppliers.",
+    },
+    {
+        "keyword": "Greenies Dental Dog Treats Regular 36 Count",
+        "brand": "Greenies",
+        "category": "Dog Treats",
+        "ebay_median_price": 29.99,
+        "ebay_low_price": 22.99,
+        "ebay_high_price": 42.99,
+        "ebay_listings": 18,
+        "source_price": 12.99,
+        "source_size": 36,
+        "best_sell_size": 36,
+        "listings_per_pack": 1,
+        "demand_level": "medium-high",
+        "notes": "Pet consumable, repeat buyers. Check freshness dates.",
+    },
+    {
+        "keyword": "Purina Pro Plan Cat Food 16 lb Bag",
+        "brand": "Purina",
+        "category": "Cat Food",
+        "ebay_median_price": 42.99,
+        "ebay_low_price": 34.99,
+        "ebay_high_price": 59.99,
+        "ebay_listings": 15,
+        "source_price": 22.99,
+        "source_size": 1,
+        "best_sell_size": 1,
+        "listings_per_pack": 1,
+        "demand_level": "medium",
+        "notes": "Heavy shipping. Best for local/pickup or when bundled.",
+    },
+    {
+        "keyword": "Dove Beauty Bar Soap 16 Pack",
+        "brand": "Dove",
+        "category": "Bath & Body",
+        "ebay_median_price": 19.99,
+        "ebay_low_price": 14.99,
+        "ebay_high_price": 27.99,
+        "ebay_listings": 28,
+        "source_price": 8.99,
+        "source_size": 16,
+        "best_sell_size": 16,
+        "listings_per_pack": 1,
+        "demand_level": "high",
+        "notes": "Classic commodity. Stable demand. Low margin but consistent.",
+    },
+    {
+        "keyword": "Old Spice Body Wash 6 Pack 16 oz",
+        "brand": "Old Spice",
+        "category": "Bath & Body",
+        "ebay_median_price": 26.99,
+        "ebay_low_price": 19.99,
+        "ebay_high_price": 37.99,
+        "ebay_listings": 20,
+        "source_price": 12.99,
+        "source_size": 6,
+        "best_sell_size": 6,
+        "listings_per_pack": 1,
+        "demand_level": "medium-high",
+        "notes": "Strong brand, good repeat buyers. Liquid shipping weight.",
+    },
+    {
+        "keyword": "Gillette Fusion5 ProGlide Razor Blades 12 Count",
+        "brand": "Gillette",
+        "category": "Shaving",
+        "ebay_median_price": 34.99,
+        "ebay_low_price": 24.99,
+        "ebay_high_price": 49.99,
+        "ebay_listings": 40,
+        "source_price": 16.99,
+        "source_size": 12,
+        "best_sell_size": 12,
+        "listings_per_pack": 1,
+        "demand_level": "very high",
+        "notes": "Evergreen product. Counterfeit risk — source carefully.",
+    },
+    {
+        "keyword": "Finish Quantum Dishwasher Tablets 100 Count",
+        "brand": "Finish",
+        "category": "Dishwasher Detergent",
+        "ebay_median_price": 22.99,
+        "ebay_low_price": 16.99,
+        "ebay_high_price": 32.99,
+        "ebay_listings": 25,
+        "source_price": 9.99,
+        "source_size": 100,
+        "best_sell_size": 100,
+        "listings_per_pack": 1,
+        "demand_level": "medium-high",
+        "notes": "Household consumable. Good margin-to-weight ratio.",
+    },
+    {
+        "keyword": "Clorox Disinfecting Wipes 6 Pack 75 Count",
+        "brand": "Clorox",
+        "category": "Household Cleaning",
+        "ebay_median_price": 24.99,
+        "ebay_low_price": 17.99,
+        "ebay_high_price": 34.99,
+        "ebay_listings": 18,
+        "source_price": 10.99,
+        "source_size": 6,
+        "best_sell_size": 6,
+        "listings_per_pack": 1,
+        "demand_level": "medium",
+        "notes": "Steady demand. Check weight for shipping cost.",
+    },
+    {
+        "keyword": "Lysol Disinfectant Spray 4 Pack 19 oz",
+        "brand": "Lysol",
+        "category": "Household Cleaning",
+        "ebay_median_price": 21.99,
+        "ebay_low_price": 15.99,
+        "ebay_high_price": 32.99,
+        "ebay_listings": 15,
+        "source_price": 8.99,
+        "source_size": 4,
+        "best_sell_size": 4,
+        "listings_per_pack": 1,
+        "demand_level": "medium",
+        "notes": "Aerosol — hazmat shipping restrictions apply. Higher shipping cost.",
+    },
+    {
+        "keyword": "Colgate Optic White Toothpaste 6 Pack",
+        "brand": "Colgate",
+        "category": "Oral Care",
+        "ebay_median_price": 19.99,
+        "ebay_low_price": 14.99,
+        "ebay_high_price": 28.99,
+        "ebay_listings": 22,
+        "source_price": 7.99,
+        "source_size": 6,
+        "best_sell_size": 6,
+        "listings_per_pack": 1,
+        "demand_level": "medium-high",
+        "notes": "Low risk, stable demand. Lightweight shipping.",
+    },
+    {
+        "keyword": "CeraVe Moisturizing Cream 16 oz 2 Pack",
+        "brand": "CeraVe",
+        "category": "Skin Care",
+        "ebay_median_price": 29.99,
+        "ebay_low_price": 22.99,
+        "ebay_high_price": 42.99,
+        "ebay_listings": 30,
+        "source_price": 14.99,
+        "source_size": 2,
+        "best_sell_size": 2,
+        "listings_per_pack": 1,
+        "demand_level": "high",
+        "notes": "Dermatologist-recommended brand. Strong, growing market.",
+    },
+    {
+        "keyword": "Eucerin Advanced Repair Lotion 3 Pack 16.9 oz",
+        "brand": "Eucerin",
+        "category": "Skin Care",
+        "ebay_median_price": 24.99,
+        "ebay_low_price": 18.99,
+        "ebay_high_price": 34.99,
+        "ebay_listings": 12,
+        "source_price": 10.99,
+        "source_size": 3,
+        "best_sell_size": 3,
+        "listings_per_pack": 1,
+        "demand_level": "medium",
+        "notes": "Stable brand, good margins. Less competitive than CeraVe.",
+    },
+    {
+        "keyword": "Dawn Platinum Dish Soap 5 Pack 16 oz",
+        "brand": "Dawn",
+        "category": "Dish Soap",
+        "ebay_median_price": 21.99,
+        "ebay_low_price": 15.99,
+        "ebay_high_price": 30.99,
+        "ebay_listings": 16,
+        "source_price": 9.99,
+        "source_size": 5,
+        "best_sell_size": 5,
+        "listings_per_pack": 1,
+        "demand_level": "medium",
+        "notes": "Trusted brand. Liquid — factor in shipping weight.",
+    },
+]
+
+
+@router.get("/curated")
+async def api_curated(
+    category: Optional[str] = None,
+    min_profit: float = 0,
+    page: int = 1,
+    per_page: int = 50,
+    sort_by: str = "net_profit",
+    sort_dir: str = "desc",
+    search: Optional[str] = None,
+):
+    """
+    Returns curated arbitrage candidates with precomputed economics.
+    All source prices are estimated — verify manually before acting.
+    """
+    candidates = []
+
+    for c in CURATED_OPPORTUNITIES:
+        src_price = c["source_price"]
+        sell_price = c["ebay_median_price"]
+        
+        # Whole-pack economics
+        revenue = sell_price
+        fees = revenue * 0.13
+        payment = revenue * 0.03 + 0.30
+        shipping = 5.0  # estimated
+        net_profit = revenue - src_price - fees - payment - shipping
+        profit_per_listing = net_profit
+        roi = (net_profit / src_price * 100) if src_price else 0
+        margin = (net_profit / revenue * 100) if revenue else 0
+        
+        break_even = src_price / c["listings_per_pack"] if c["listings_per_pack"] else 0
+
+        candidates.append({
+            "keyword": c["keyword"],
+            "brand": c["brand"],
+            "category": c["category"],
+            "ebay_listings": c["ebay_listings"],
+            "ebay_median_price": c["ebay_median_price"],
+            "ebay_low_price": c["ebay_low_price"],
+            "ebay_high_price": c["ebay_high_price"],
+            "source_price": src_price,
+            "source_size": c["source_size"],
+            "cost_per_unit": src_price / c["source_size"],
+            "best_sell_size": c["best_sell_size"],
+            "listings_per_pack": c["listings_per_pack"],
+            "net_profit": round(net_profit, 2),
+            "profit_per_listing": round(profit_per_listing, 2),
+            "roi": round(roi, 1),
+            "margin": round(margin, 1),
+            "sell_price": sell_price,
+            "break_even": round(break_even, 2),
+            "leftover_units": 0,
+            "demand_level": c["demand_level"],
+            "notes": c["notes"],
+            "source_is_estimate": True,
+        })
+
+    # Filter by category
+    if category and category.lower() != "all":
+        candidates = [c for c in candidates if c["category"].lower() == category.lower()]
+
+    # Filter by search term
+    if search:
+        search_lower = search.lower()
+        candidates = [
+            c for c in candidates
+            if search_lower in c["keyword"].lower()
+            or search_lower in c["brand"].lower()
+            or search_lower in c["category"].lower()
+        ]
+
+    # Filter by min profit
+    if min_profit > 0:
+        candidates = [c for c in candidates if c["net_profit"] >= min_profit]
+
+    # Sort
+    reverse = sort_dir.lower() == "desc"
+    sort_key_map = {
+        "net_profit": "net_profit",
+        "roi": "roi",
+        "profit_per_listing": "profit_per_listing",
+        "margin": "margin",
+        "ebay_median_price": "ebay_median_price",
+        "ebay_listings": "ebay_listings",
+        "source_price": "source_price",
+    }
+    sort_key = sort_key_map.get(sort_by, "net_profit")
+    candidates.sort(key=lambda x: x[sort_key], reverse=reverse)
+
+    total = len(candidates)
+    categories = sorted(set(c["category"] for c in candidates))
+
+    # Pagination
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated = candidates[start:end]
+
+    return {
+        "success": True,
+        "opportunities": paginated,
+        "total": total,
+        "total_pages": total_pages,
+        "total_scanned": len(CURATED_OPPORTUNITIES),
+        "page": page,
+        "per_page": per_page,
+        "sort_by": sort_by,
+        "sort_dir": sort_dir,
+        "categories": categories,
+        "data_source": "curated",
+        "note": "All source prices are estimated. eBay listing counts and price ranges are approximate. "
+                "Verify all numbers manually before listing.",
+    }
+
+
 @router.get("/scan")
 async def api_scan(
     category: Optional[str] = None,
