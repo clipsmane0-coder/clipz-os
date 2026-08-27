@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     frontend_url: str = "http://localhost:5173"
 
+    # eBay Sell API
+    ebay_client_id: str = ""
+    ebay_client_secret: str = ""
+    ebay_redirect_uri: str = ""
+    ebay_env: str = "production"  # sandbox | production
+
     @property
     def cors_origin_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
