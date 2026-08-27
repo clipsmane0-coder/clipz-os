@@ -1,4 +1,4 @@
-"""Add eBay tokens and draft listings tables
+"""Add eBay tokens, draft listings, and product sheets tables
 
 Revision ID: f23a9c7b1d4e
 Revises: e6b30fb48689
@@ -15,6 +15,7 @@ depends_on = None
 
 
 def upgrade():
+    # eBay tokens
     op.create_table(
         'ebay_tokens',
         sa.Column('id', sa.String(), nullable=False),
@@ -32,6 +33,7 @@ def upgrade():
     )
     op.create_index('ix_ebay_tokens_user_id', 'ebay_tokens', ['user_id'])
 
+    # eBay draft listings
     op.create_table(
         'ebay_draft_listings',
         sa.Column('id', sa.String(), nullable=False),
@@ -81,8 +83,56 @@ def upgrade():
     )
     op.create_index('ix_ebay_draft_listings_user_id', 'ebay_draft_listings', ['user_id'])
 
+    # Product sheets
+    op.create_table(
+        'product_sheets',
+        sa.Column('id', sa.String(), nullable=False),
+        sa.Column('user_id', sa.String(), nullable=False),
+        sa.Column('product_name', sa.String(), nullable=False),
+        sa.Column('brand', sa.String(), nullable=True),
+        sa.Column('model', sa.String(), nullable=True),
+        sa.Column('mpn', sa.String(), nullable=True),
+        sa.Column('upc', sa.String(), nullable=True),
+        sa.Column('asin', sa.String(), nullable=True),
+        sa.Column('product_type', sa.String(), nullable=True),
+        sa.Column('source', sa.String(), nullable=False, default='amazon'),
+        sa.Column('source_url', sa.String(), nullable=True),
+        sa.Column('pack_size', sa.Integer(), nullable=True),
+        sa.Column('pack_price', sa.Float(), nullable=True),
+        sa.Column('cost_per_unit', sa.Float(), nullable=True),
+        sa.Column('color', sa.String(), nullable=True),
+        sa.Column('power_source', sa.String(), nullable=True),
+        sa.Column('sensor_type', sa.String(), nullable=True),
+        sa.Column('dimensions', sa.String(), nullable=True),
+        sa.Column('weight_lbs', sa.Float(), nullable=True),
+        sa.Column('certifications', sa.String(), nullable=True),
+        sa.Column('features', sa.JSON(), nullable=True),
+        sa.Column('split_strategy', sa.Text(), nullable=True),
+        sa.Column('sell_individually', sa.Boolean(), default=True),
+        sa.Column('estimated_ebay_price_per_unit', sa.Float(), nullable=True),
+        sa.Column('estimated_shipping_cost', sa.Float(), nullable=True),
+        sa.Column('estimated_net_profit_per_pack', sa.Float(), nullable=True),
+        sa.Column('estimated_roi', sa.Float(), nullable=True),
+        sa.Column('verified_title', sa.Boolean(), default=False),
+        sa.Column('verified_pack_size', sa.Boolean(), default=False),
+        sa.Column('verified_price', sa.Boolean(), default=False),
+        sa.Column('verified_ebay_demand', sa.Boolean(), default=False),
+        sa.Column('overall_status', sa.String(), nullable=False, default='pending'),
+        sa.Column('rejection_reason', sa.Text(), nullable=True),
+        sa.Column('suggested_ebay_category_id', sa.String(), nullable=True),
+        sa.Column('suggested_ebay_category_name', sa.String(), nullable=True),
+        sa.Column('notes', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), nullable=True),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id'),
+    )
+    op.create_index('ix_product_sheets_user_id', 'product_sheets', ['user_id'])
+
 
 def downgrade():
+    op.drop_index('ix_product_sheets_user_id', 'product_sheets')
+    op.drop_table('product_sheets')
     op.drop_index('ix_ebay_draft_listings_user_id', 'ebay_draft_listings')
     op.drop_table('ebay_draft_listings')
     op.drop_index('ix_ebay_tokens_user_id', 'ebay_tokens')

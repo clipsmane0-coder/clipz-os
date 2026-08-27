@@ -10,6 +10,7 @@ from app.api.v1.routes import router
 from app.auth.routes import router as auth_router
 from app.routers.deploy import router as deploy_router
 from app.routers.ebay import router as ebay_router
+from app.routers.product_sheets import router as product_sheets_router
 from app.models import *  # noqa: F401, F403 — ensure all models are loaded for create_all
 
 setup_logging(settings.log_level)
@@ -45,6 +46,9 @@ app.include_router(deploy_router)
 
 # eBay Sell API integration
 app.include_router(ebay_router)
+
+# Product sheets
+app.include_router(product_sheets_router)
 
 
 @app.on_event("startup")
